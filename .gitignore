@@ -1,0 +1,11 @@
+bin/
+obj/
+.vs/
+.idea/
+artifacts
+
+# Test environment
+jellyfin-test/
+check-publish/
+publish/
+*.zip

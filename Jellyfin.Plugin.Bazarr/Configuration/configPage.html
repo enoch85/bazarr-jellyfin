@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8">
+    <title>Bazarr</title>
+</head>
+<body>
+    <div id="BazarrConfigPage" data-role="page" class="page type-interior pluginConfigurationPage" data-require="emby-input,emby-button,emby-select,emby-checkbox">
+        <div data-role="content">
+            <div class="content-primary">
+                <form id="BazarrConfigForm">
+                    <h2>Bazarr Configuration</h2>
+                    
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="BazarrUrl">Bazarr URL</label>
+                        <input id="BazarrUrl" name="BazarrUrl" type="text" is="emby-input" placeholder="http://localhost:6767" />
+                        <div class="fieldDescription">The URL of your Bazarr instance</div>
+                    </div>
+                    
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="BazarrApiKey">Bazarr API Key</label>
+                        <input id="BazarrApiKey" name="BazarrApiKey" type="password" is="emby-input" placeholder="Enter your Bazarr API key" />
+                        <div class="fieldDescription">Your Bazarr API key for authentication</div>
+                    </div>
+                    
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="EnableForMovies" name="EnableForMovies" type="checkbox" is="emby-checkbox" />
+                            <span>Enable for Movies</span>
+                        </label>
+                    </div>
+                    
+                    <div class="checkboxContainer checkboxContainer-withDescription">
+                        <label class="emby-checkbox-label">
+                            <input id="EnableForEpisodes" name="EnableForEpisodes" type="checkbox" is="emby-checkbox" />
+                            <span>Enable for Episodes</span>
+                        </label>
+                    </div>
+                    
+                    <div class="inputContainer">
+                        <label class="inputLabel inputLabelUnfocused" for="SearchTimeoutSeconds">Search Timeout (seconds)</label>
+                        <input id="SearchTimeoutSeconds" name="SearchTimeoutSeconds" type="number" is="emby-input" min="0" max="300" />
+                        <div class="fieldDescription">
+                            UI response timeout - search continues in background (Bazarr searches take 5-15 min). Results are cached for 1 hour. Set to 0 to wait indefinitely. <strong>Recommended: 25s</strong>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <button is="emby-button" type="button" class="raised button-submit block emby-button" onclick="BazarrConfig.testConnection()">
+                            <span>Test Connection</span>
+                        </button>
+                    </div>
+                    
+                    <div id="TestConnectionResult" style="margin-top: 10px;"></div>
+                    
+                    <div>
+                        <button is="emby-button" type="submit" class="raised button-submit block emby-button">
+                            <span>Save</span>
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+        <script type="text/javascript">
+            var BazarrConfig = {
+                pluginUniqueId: '72449d0e-7ba4-4ae7-a996-c00e6b06c8f8',
+                
+                testConnection: async function() {
+                    const resultDiv = document.querySelector('#TestConnectionResult');
+                    resultDiv.innerHTML = '<p>Saving configuration and testing connection...</p>';
+                    
+                    try {
+                        // First, save the current form values to configuration
+                        const config = await ApiClient.getPluginConfiguration(BazarrConfig.pluginUniqueId);
+                        config.BazarrUrl = document.querySelector('#BazarrUrl').value;
+                        config.BazarrApiKey = document.querySelector('#BazarrApiKey').value;
+                        config.EnableForMovies = document.querySelector('#EnableForMovies').checked;
+                        config.EnableForEpisodes = document.querySelector('#EnableForEpisodes').checked;
+                        config.SearchTimeoutSeconds = parseInt(document.querySelector('#SearchTimeoutSeconds').value) || 25;
+                        await ApiClient.updatePluginConfiguration(BazarrConfig.pluginUniqueId, config);
+                        
+                        resultDiv.innerHTML = '<p>Testing connection...</p>';
+                        
+                        const response = await ApiClient.ajax({
+                            type: 'POST',
+                            url: ApiClient.getUrl('Bazarr/TestConnection'),
+                            dataType: 'json'
+                        });
+                        
+                        // Handle both camelCase and PascalCase responses
+                        const success = response.success ?? response.Success;
+                        const message = response.message ?? response.Message ?? 'Unknown response';
+                        
+                        if (success) {
+                            resultDiv.innerHTML = '<p style="color: green;">✓ ' + message + '</p>';
+                        } else {
+                            resultDiv.innerHTML = '<p style="color: red;">✗ ' + message + '</p>';
+                        }
+                    } catch (error) {
+                        console.error('Test connection error:', error);
+                        resultDiv.innerHTML = '<p style="color: red;">✗ Connection failed: ' + (error.message || error.statusText || 'Unknown error') + '</p>';
+                    }
+                }
+            };
+
+            document.querySelector('#BazarrConfigPage')
+                .addEventListener('pageshow', function() {
+                    Dashboard.showLoadingMsg();
+                    ApiClient.getPluginConfiguration(BazarrConfig.pluginUniqueId).then(function (config) {
+                        document.querySelector('#BazarrUrl').value = config.BazarrUrl || '';
+                        document.querySelector('#BazarrApiKey').value = config.BazarrApiKey || '';
+                        document.querySelector('#EnableForMovies').checked = config.EnableForMovies;
+                        document.querySelector('#EnableForEpisodes').checked = config.EnableForEpisodes;
+                        document.querySelector('#SearchTimeoutSeconds').value = config.SearchTimeoutSeconds ?? 25;
+                        Dashboard.hideLoadingMsg();
+                    });
+                });
+
+            document.querySelector('#BazarrConfigForm')
+                .addEventListener('submit', function(e) {
+                Dashboard.showLoadingMsg();
+                ApiClient.getPluginConfiguration(BazarrConfig.pluginUniqueId).then(function (config) {
+                    config.BazarrUrl = document.querySelector('#BazarrUrl').value;
+                    config.BazarrApiKey = document.querySelector('#BazarrApiKey').value;
+                    config.EnableForMovies = document.querySelector('#EnableForMovies').checked;
+                    config.EnableForEpisodes = document.querySelector('#EnableForEpisodes').checked;
+                    config.SearchTimeoutSeconds = parseInt(document.querySelector('#SearchTimeoutSeconds').value) || 25;
+                    ApiClient.updatePluginConfiguration(BazarrConfig.pluginUniqueId, config).then(function (result) {
+                        Dashboard.processPluginConfigurationUpdateResult(result);
+                    });
+                });
+
+                e.preventDefault();
+                return false;
+            });
+        </script>
+    </div>
+</body>
+</html>

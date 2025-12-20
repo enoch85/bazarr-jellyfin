@@ -1,0 +1,12 @@
+[
+  {
+    "guid": "72449d0e-7ba4-4ae7-a996-c00e6b06c8f8",
+    "name": "Bazarr",
+    "description": "Request and download subtitles directly from Jellyfin using your Bazarr instance. No need to navigate to Bazarr's web UI - request subtitles with a single click from movie and episode detail pages.",
+    "overview": "Bazarr subtitle integration for Jellyfin",
+    "owner": "enoch85",
+    "category": "Subtitles",
+    "imageUrl": "https://raw.githubusercontent.com/enoch85/bazarr-jellyfin/main/Jellyfin.Plugin.Bazarr/logo.png",
+    "versions": []
+  }
+]

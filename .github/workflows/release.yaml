@@ -1,0 +1,176 @@
+name: Release Plugin
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+    inputs:
+      version:
+        description: 'Version tag (e.g., v1.0.0)'
+        required: true
+
+permissions:
+  contents: write
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.ref }}
+          fetch-depth: 0
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+
+      - name: Get version from tag
+        id: version
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            VERSION="${{ github.ref_name }}"
+          else
+            VERSION="${{ github.event.inputs.version }}"
+          fi
+          # Remove 'v' prefix if present
+          VERSION="${VERSION#v}"
+          # Convert to .NET version format (e.g., 1.0.0 -> 1.0.0.0)
+          if [[ "$VERSION" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            VERSION="${VERSION}.0"
+          fi
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+          echo "Plugin version: $VERSION"
+
+      - name: Update version in csproj
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          sed -i "s/<AssemblyVersion>.*<\/AssemblyVersion>/<AssemblyVersion>$VERSION<\/AssemblyVersion>/" Jellyfin.Plugin.Bazarr/Jellyfin.Plugin.Bazarr.csproj
+          sed -i "s/<FileVersion>.*<\/FileVersion>/<FileVersion>$VERSION<\/FileVersion>/" Jellyfin.Plugin.Bazarr/Jellyfin.Plugin.Bazarr.csproj
+          echo "Updated csproj with version $VERSION"
+          grep -E "AssemblyVersion|FileVersion" Jellyfin.Plugin.Bazarr/Jellyfin.Plugin.Bazarr.csproj
+
+      - name: Build Plugin
+        run: dotnet publish Jellyfin.Plugin.Bazarr/Jellyfin.Plugin.Bazarr.csproj --configuration Release --output ./publish
+
+      - name: Create ZIP package
+        run: |
+          cd publish
+          zip -r ../Jellyfin.Plugin.Bazarr.zip .
+          cd ..
+
+      - name: Calculate checksum
+        id: checksum
+        run: |
+          CHECKSUM=$(md5sum Jellyfin.Plugin.Bazarr.zip | cut -d' ' -f1)
+          echo "checksum=$CHECKSUM" >> $GITHUB_OUTPUT
+          echo "ZIP checksum: $CHECKSUM"
+
+      - name: Get tag name
+        id: tag
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            TAG="${{ github.ref_name }}"
+          else
+            TAG="${{ github.event.inputs.version }}"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+
+      - name: Update manifest
+        if: github.event_name == 'push'
+        run: |
+          VERSION="${{ steps.version.outputs.version }}"
+          CHECKSUM="${{ steps.checksum.outputs.checksum }}"
+          TAG="${{ steps.tag.outputs.tag }}"
+          TIMESTAMP=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          
+          # Use jq to safely create JSON with proper escaping
+          # Prepend new version to versions array (keeps version history for updates)
+          jq --arg ver "$VERSION" \
+             --arg log "See release notes on GitHub" \
+             --arg abi "10.11.0.0" \
+             --arg url "https://github.com/enoch85/bazarr-jellyfin/releases/download/$TAG/Jellyfin.Plugin.Bazarr.zip" \
+             --arg sum "$CHECKSUM" \
+             --arg ts "$TIMESTAMP" \
+             '.[0].versions = [{version: $ver, changelog: $log, targetAbi: $abi, sourceUrl: $url, checksum: $sum, timestamp: $ts}] + .[0].versions' \
+             manifest.json > manifest.tmp && mv manifest.tmp manifest.json
+
+      - name: Commit manifest changes
+        if: github.event_name == 'push'
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add manifest.json
+          git commit -m "Update manifest for ${{ steps.tag.outputs.tag }}" || echo "No changes to commit"
+          git push origin HEAD:main
+
+      - name: Create Release
+        if: github.event_name == 'push'
+        id: create_release
+        uses: softprops/action-gh-release@v1
+        with:
+          tag_name: ${{ steps.tag.outputs.tag }}
+          name: ${{ steps.tag.outputs.tag }}
+          files: Jellyfin.Plugin.Bazarr.zip
+          generate_release_notes: false
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Generate release notes
+        if: github.event_name == 'push'
+        run: |
+          TAG="${{ steps.tag.outputs.tag }}"
+          
+          # Get previous tag (exclude current tag, get the next one)
+          PREV_TAG=$(git tag --sort=-version:refname | grep -v "^${TAG}$" | head -1)
+          
+          if [ -z "$PREV_TAG" ]; then
+            # First release - get all commits up to and including the tag
+            COMMITS=$(git log --pretty=format:"- %s ([%h](https://github.com/enoch85/bazarr-jellyfin/commit/%H))" ${TAG})
+          else
+            # Get commits between previous tag and current tag (exclusive..inclusive)
+            COMMITS=$(git log --pretty=format:"- %s ([%h](https://github.com/enoch85/bazarr-jellyfin/commit/%H))" ${PREV_TAG}..${TAG})
+          fi
+          
+          # Filter out manifest update commits from release notes
+          COMMITS=$(echo "$COMMITS" | grep -v "Update manifest for")
+          
+          # Create release notes
+          cat > release_notes.md << EOF
+          ## Changes
+          
+          ${COMMITS}
+          
+          ---
+          
+          ## Installation
+          
+          1. In Jellyfin, go to **Dashboard** → **Plugins** → **[Repositories](http://127.0.0.1:8096/web/#/dashboard/plugins/repositories)**
+          2. Click **Add** and enter:
+             \`\`\`
+             https://raw.githubusercontent.com/enoch85/bazarr-jellyfin/main/manifest.json
+             \`\`\`
+          3. Go to **[Catalog](http://127.0.0.1:8096/web/#/dashboard/plugins)** and find **Bazarr**
+          4. Click **Install** and restart Jellyfin
+          
+          ## Configuration
+          
+          After installation, go to **Dashboard** → **Plugins** → **Bazarr** and enter your Bazarr server URL and API key.
+          EOF
+          
+          # Update release with new notes
+          gh release edit "$TAG" --notes-file release_notes.md
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Upload Artifact (manual trigger)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: bazarr-jellyfin-${{ github.event.inputs.version }}
+          path: Jellyfin.Plugin.Bazarr.zip

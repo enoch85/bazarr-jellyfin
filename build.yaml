@@ -1,0 +1,16 @@
+---
+name: "Bazarr"
+guid: "72449d0e-7ba4-4ae7-a996-c00e6b06c8f8"
+version: "1.0.0.0"
+targetAbi: "10.9.0.0"
+framework: "net9.0"
+overview: "Request subtitles from Bazarr directly within Jellyfin"
+description: >
+  Integrates Jellyfin with Bazarr for on-demand subtitle search and download.
+  Requires Bazarr configured with Radarr/Sonarr.
+category: "Subtitles"
+owner: "enoch85"
+artifacts:
+- "Jellyfin.Plugin.Bazarr.dll"
+changelog: >
+  Initial release - Phase 1 complete
