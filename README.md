@@ -3,8 +3,6 @@
 [![GitHub Release](https://img.shields.io/github/v/release/enoch85/bazarr-jellyfin)](https://github.com/enoch85/bazarr-jellyfin/releases)
 [![License](https://img.shields.io/github/license/enoch85/bazarr-jellyfin)](LICENSE)
 
-Search and download subtitles directly from Jellyfin using your Bazarr instance.
-
 ## Overview
 
 This plugin integrates Jellyfin with [Bazarr](https://www.bazarr.media/) to provide on-demand subtitle searching and downloading. Instead of navigating to Bazarr's web UI, users can search and download subtitles directly from Jellyfin's native subtitle interface.
@@ -17,6 +15,21 @@ This plugin integrates Jellyfin with [Bazarr](https://www.bazarr.media/) to prov
 - Background Search - Long searches continue in background, UI stays responsive
 - One-Click Download - Select and download subtitles instantly
 - Auto-Refresh - Library automatically refreshes after download
+
+## How it works
+
+**1. Edit subtitle**
+
+<img width="250" height="360" alt="image" src="https://github.com/user-attachments/assets/1ee42d05-0da1-4ee8-9bc1-4e3e8fcce3ea" />
+
+**2. Choose language, and hit search**
+
+<img width="550" height="150" alt="image" src="https://github.com/user-attachments/assets/b14ddf3c-f289-4bd3-b9fb-82c3ed9c7ee6" />
+
+**3. If the search takes longer than your set value (default 25 seconds), this placeholder pops up.**
+
+<img width="550" height="120" alt="image" src="https://github.com/user-attachments/assets/aaa977ca-05c6-4d23-a72a-bac45a60885a" />
+
 
 ## Architecture
 
