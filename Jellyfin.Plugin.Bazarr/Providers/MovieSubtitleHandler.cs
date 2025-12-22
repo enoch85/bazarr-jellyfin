@@ -90,6 +90,16 @@ public class MovieSubtitleHandler
 
         var subtitles = searchResult.Subtitles;
 
+        // Log subtitle languages for debugging
+        if (subtitles.Count > 0)
+        {
+            var languageCodes = string.Join(", ", subtitles.Select(s => $"'{s.Language}'").Distinct());
+            _logger.LogInformation(
+                "Bazarr returned subtitles with language codes: {Languages}. Filtering for requested language: '{RequestedLanguage}'",
+                languageCodes,
+                languageCode);
+        }
+
         // Filter subtitles by requested language
         var filteredSubtitles = SubtitleLanguageHelper.FilterByLanguage(subtitles, languageCode).ToList();
 

@@ -253,6 +253,14 @@ public class BazarrService : IBazarrService
                 seriesTitle.Contains(s.Title, StringComparison.OrdinalIgnoreCase));
         }
 
+        // If still no match, try normalized matching (handles leetspeak like PLUR1BUS vs Pluribus)
+        if (show == null)
+        {
+            var normalizedSearch = NormalizeTitle(seriesTitle);
+            show = seriesList.FirstOrDefault(s =>
+                string.Equals(NormalizeTitle(s.Title), normalizedSearch, StringComparison.OrdinalIgnoreCase));
+        }
+
         if (show == null)
         {
             _logger.LogWarning(
@@ -714,6 +722,29 @@ public class BazarrService : IBazarrService
         var request = new HttpRequestMessage(method, $"{baseUrl}{endpoint}");
         request.Headers.Add("X-API-KEY", apiKey);
         return request;
+    }
+
+    /// <summary>
+    /// Normalizes a title for fuzzy matching by replacing common leetspeak substitutions.
+    /// </summary>
+    /// <param name="title">The title to normalize.</param>
+    /// <returns>Normalized title with leetspeak characters replaced.</returns>
+    private static string NormalizeTitle(string title)
+    {
+        if (string.IsNullOrEmpty(title))
+        {
+            return title;
+        }
+
+        // Replace common leetspeak substitutions
+        return title
+            .Replace("1", "I", StringComparison.OrdinalIgnoreCase)
+            .Replace("0", "O", StringComparison.OrdinalIgnoreCase)
+            .Replace("3", "E", StringComparison.OrdinalIgnoreCase)
+            .Replace("4", "A", StringComparison.OrdinalIgnoreCase)
+            .Replace("5", "S", StringComparison.OrdinalIgnoreCase)
+            .Replace("7", "T", StringComparison.OrdinalIgnoreCase)
+            .Replace("8", "B", StringComparison.OrdinalIgnoreCase);
     }
 
     /// <summary>
