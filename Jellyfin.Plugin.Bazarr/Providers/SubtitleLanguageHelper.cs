@@ -73,9 +73,10 @@ public static class SubtitleLanguageHelper
 
     /// <summary>
     /// Gets the subtitle format, handling Bazarr's quirky "False" string.
+    /// Returns uppercase format names (SRT, ASS, etc.) for better readability in the UI.
     /// </summary>
     /// <param name="originalFormat">The original format from Bazarr.</param>
-    /// <returns>A valid subtitle format string.</returns>
+    /// <returns>A valid subtitle format string in uppercase.</returns>
     public static string GetSubtitleFormat(string? originalFormat)
     {
         // Bazarr returns "False" as a string when format is unknown, or null
@@ -83,10 +84,33 @@ public static class SubtitleLanguageHelper
             originalFormat.Equals("False", StringComparison.OrdinalIgnoreCase) ||
             originalFormat.Equals("True", StringComparison.OrdinalIgnoreCase))
         {
-            return "srt"; // Default to srt
+            return "SRT"; // Default to SRT
         }
 
-        return originalFormat;
+        // Return uppercase format names for display (SRT, ASS, VTT, etc.)
+        // Jellyfin's MIME type lookup is case-insensitive, so this works correctly
+        return originalFormat.ToUpperInvariant();
+    }
+
+    /// <summary>
+    /// Formats subtitle comment with provider, score percentage, and uploader info.
+    /// </summary>
+    /// <param name="subtitle">The subtitle option from Bazarr.</param>
+    /// <returns>A formatted comment string for display.</returns>
+    public static string FormatSubtitleComment(Api.Models.SubtitleOption subtitle)
+    {
+        var parts = new List<string> { subtitle.Provider };
+
+        // Add score with percentage
+        parts.Add($"Score: {subtitle.Score}%");
+
+        // Add uploader if available (helps identify quality - some uploaders like os-auto may be machine-generated)
+        if (!string.IsNullOrWhiteSpace(subtitle.Uploader))
+        {
+            parts.Add($"by {subtitle.Uploader}");
+        }
+
+        return string.Join(" - ", parts);
     }
 
     /// <summary>

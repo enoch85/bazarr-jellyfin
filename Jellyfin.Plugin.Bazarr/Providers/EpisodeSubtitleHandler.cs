@@ -176,7 +176,7 @@ public class EpisodeSubtitleHandler
             ProviderName = "Bazarr",
             Format = SubtitleLanguageHelper.GetSubtitleFormat(s.OriginalFormat),
             ThreeLetterISOLanguageName = s.Language,
-            Comment = $"{s.Provider} - Score: {s.Score}",
+            Comment = SubtitleLanguageHelper.FormatSubtitleComment(s),
             IsHashMatch = s.Matches?.Contains("hash") ?? false
         });
     }

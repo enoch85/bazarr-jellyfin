@@ -168,6 +168,40 @@ The plugin triggers a library refresh after download. If it still doesn't appear
 
 Ensure the item exists in Radarr/Sonarr and Bazarr has synced. The plugin matches by TMDB ID (movies) or TVDB ID (episodes).
 
+### Connection test fails with HTML/redirect errors
+
+**Problem**: You see errors like:
+- `Bazarr returned HTML instead of JSON`
+- `Bazarr returned a redirect (302)`
+- `'<' is an invalid start of a value`
+
+**Common causes**:
+- Incorrect Bazarr URL (e.g., using `/api` suffix when it shouldn't be there)
+- Reverse proxy or authentication layer intercepting requests
+- Wrong port or protocol (http vs https)
+- Bazarr not accessible from Jellyfin's network
+
+**Troubleshooting steps**:
+
+1. **Verify the URL format**
+   - Use base URL only: `http://localhost:6767` (not `http://localhost:6767/api`)
+   - Include port if not using standard ports
+   - Use the correct protocol (http/https)
+
+2. **Test direct access**
+   - Try accessing `http://your-bazarr-url/api/system/languages` in a browser
+   - If it prompts for login or redirects, the plugin won't work with that URL
+   - You should see JSON data, not HTML
+
+3. **If behind a proxy/auth**
+   - Configure proxy to bypass authentication for `/api/*` paths
+   - Or use a direct internal URL (e.g., `http://bazarr:6767` in Docker)
+   - Or set up a separate endpoint without authentication
+
+4. **Check network access**
+   - Ensure Jellyfin can reach Bazarr (same network in Docker, firewall rules, etc.)
+   - Test with `curl http://your-bazarr-url/api/system/languages` from Jellyfin's container/host
+
 ## License
 
 [GPLv3](LICENSE)

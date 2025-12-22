@@ -8,6 +8,24 @@ namespace Jellyfin.Plugin.Bazarr.Tests.Helpers;
 public class MockConfigProvider : IBazarrConfigProvider
 {
     /// <summary>
+    /// Initializes a new instance of the <see cref="MockConfigProvider"/> class.
+    /// </summary>
+    public MockConfigProvider()
+    {
+    }
+
+    /// <summary>
+    /// Initializes a new instance of the <see cref="MockConfigProvider"/> class.
+    /// </summary>
+    /// <param name="bazarrUrl">The Bazarr URL.</param>
+    /// <param name="bazarrApiKey">The Bazarr API key.</param>
+    public MockConfigProvider(string bazarrUrl, string bazarrApiKey)
+    {
+        BazarrUrl = bazarrUrl;
+        BazarrApiKey = bazarrApiKey;
+    }
+
+    /// <summary>
     /// Gets or sets the Bazarr URL.
     /// </summary>
     public string BazarrUrl { get; set; } = "http://localhost:6767";

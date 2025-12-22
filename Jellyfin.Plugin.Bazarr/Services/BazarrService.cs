@@ -60,7 +60,7 @@ public class BazarrService : IBazarrService
         _logger.LogInformation("Fetching movies from Bazarr");
         var request = CreateRequest(HttpMethod.Get, "/api/movies");
         var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, "/api/movies").ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<BazarrResponse<BazarrMovie>>(cancellationToken: cancellationToken).ConfigureAwait(false);
         var movies = result?.Data ?? (IReadOnlyList<BazarrMovie>)new List<BazarrMovie>();
@@ -83,7 +83,7 @@ public class BazarrService : IBazarrService
         _logger.LogInformation("Fetching series from Bazarr");
         var request = CreateRequest(HttpMethod.Get, "/api/series");
         var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, "/api/series").ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<BazarrResponse<BazarrSeries>>(cancellationToken: cancellationToken).ConfigureAwait(false);
         var series = result?.Data ?? (IReadOnlyList<BazarrSeries>)new List<BazarrSeries>();
@@ -108,7 +108,7 @@ public class BazarrService : IBazarrService
         _logger.LogInformation("Fetching episodes for series {SeriesId} from Bazarr", sonarrSeriesId);
         var request = CreateRequest(HttpMethod.Get, $"/api/episodes?seriesid[]={sonarrSeriesId}");
         var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, $"/api/episodes?seriesid[]={sonarrSeriesId}").ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<BazarrResponse<BazarrEpisode>>(cancellationToken: cancellationToken).ConfigureAwait(false);
         var episodes = result?.Data ?? (IReadOnlyList<BazarrEpisode>)new List<BazarrEpisode>();
@@ -396,7 +396,7 @@ public class BazarrService : IBazarrService
         var request = CreateRequest(HttpMethod.Get, $"/api/providers/movies?radarrid={radarrId}");
 
         var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, $"/api/providers/movies?radarrid={radarrId}").ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<BazarrResponse<SubtitleOption>>(cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -492,7 +492,7 @@ public class BazarrService : IBazarrService
         var request = CreateRequest(HttpMethod.Get, $"/api/providers/episodes?episodeid={sonarrEpisodeId}");
 
         var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, $"/api/providers/episodes?episodeid={sonarrEpisodeId}").ConfigureAwait(false);
 
         var result = await response.Content.ReadFromJsonAsync<BazarrResponse<SubtitleOption>>(cancellationToken: cancellationToken).ConfigureAwait(false);
 
@@ -618,7 +618,7 @@ public class BazarrService : IBazarrService
         var response = await _httpClient.SendAsync(request).ConfigureAwait(false);
 
         _logger.LogDebug("Received response with status {StatusCode}", response.StatusCode);
-        response.EnsureSuccessStatusCode();
+        await ValidateResponseAsync(response, "/api/system/languages").ConfigureAwait(false);
 
         // Languages endpoint returns a direct array, not wrapped in { "data": [...] }
         var result = await response.Content.ReadFromJsonAsync<List<BazarrLanguage>>().ConfigureAwait(false);
@@ -714,5 +714,63 @@ public class BazarrService : IBazarrService
         var request = new HttpRequestMessage(method, $"{baseUrl}{endpoint}");
         request.Headers.Add("X-API-KEY", apiKey);
         return request;
+    }
+
+    /// <summary>
+    /// Validates HTTP response and ensures it contains JSON, not HTML or redirects.
+    /// </summary>
+    /// <param name="response">The HTTP response to validate.</param>
+    /// <param name="endpoint">The endpoint that was called (for logging).</param>
+    /// <exception cref="InvalidOperationException">Thrown when response is invalid (HTML, redirect, etc).</exception>
+    private async Task ValidateResponseAsync(HttpResponseMessage response, string endpoint)
+    {
+        // Check for redirect responses (301, 302, etc.)
+        if ((int)response.StatusCode >= 300 && (int)response.StatusCode < 400)
+        {
+            _logger.LogError(
+                "Bazarr returned redirect status {StatusCode} for {Endpoint}",
+                response.StatusCode,
+                endpoint);
+            throw new InvalidOperationException(
+                $"Bazarr returned a redirect ({response.StatusCode}). This typically indicates the URL is incorrect " +
+                "or there's an intermediary (like a reverse proxy or authentication layer) intercepting the request. " +
+                "The plugin needs direct access to Bazarr's API. Check your Bazarr URL configuration.");
+        }
+
+        // Check if response is actually HTML (indicates wrong endpoint or intercepted request)
+        var contentType = response.Content.Headers.ContentType?.MediaType;
+        if (contentType?.Contains("html", StringComparison.OrdinalIgnoreCase) == true)
+        {
+            var preview = await response.Content.ReadAsStringAsync().ConfigureAwait(false);
+            var shortPreview = preview.Length > 300 ? string.Concat(preview.AsSpan(0, 300), "...") : preview;
+
+            _logger.LogError(
+                "Bazarr returned HTML instead of JSON for {Endpoint}. Content-Type: {ContentType}. " +
+                "Response preview: {Preview}",
+                endpoint,
+                contentType,
+                shortPreview);
+
+            throw new InvalidOperationException(
+                "Bazarr returned HTML instead of JSON. Possible causes:\n" +
+                "- Incorrect Bazarr URL (use base URL like http://localhost:6767, not http://localhost:6767/api)\n" +
+                "- Request being intercepted by a proxy or authentication layer\n" +
+                "- API endpoint doesn't exist or Bazarr version incompatibility\n\n" +
+                $"Response preview: {(preview.Length > 100 ? string.Concat(preview.AsSpan(0, 100), "...") : preview)}");
+        }
+
+        // Check for non-JSON content types
+        if (contentType != null &&
+            !contentType.Contains("json", StringComparison.OrdinalIgnoreCase) &&
+            !contentType.Contains("text", StringComparison.OrdinalIgnoreCase))
+        {
+            _logger.LogWarning(
+                "Unexpected content type {ContentType} for {Endpoint}",
+                contentType,
+                endpoint);
+        }
+
+        // Now check for HTTP errors
+        response.EnsureSuccessStatusCode();
     }
 }
