@@ -20,12 +20,12 @@ This will:
 
 ## Services
 
-| Service  | URL                     | Login                 | API Key            |
-|----------|-------------------------|-----------------------|--------------------|
-| Jellyfin | http://localhost:8096   | `dev` / `dev123`      | (use UI)           |
-| Bazarr   | http://localhost:6767   | (no auth)             | `devkey123456789`  |
-| Sonarr   | http://localhost:8989   | (no auth)             | `sonarrdevkey1234` |
-| Radarr   | http://localhost:7878   | (no auth)             | `radarrdevkey1234` |
+| Service  | URL                     | Login                 | API Key                      |
+|----------|-------------------------|-----------------------|------------------------------|
+| Jellyfin | http://localhost:8096   | `dev` / `dev123`      | (use UI)                     |
+| Bazarr   | http://localhost:6767   | (no auth)             | `devkey123456789012345`      |
+| Sonarr   | http://localhost:8989   | (no auth)             | `sonarrdevkey12345678901234` |
+| Radarr   | http://localhost:7878   | (no auth)             | `radarrdevkey12345678901234` |
 
 ## Script Commands
 

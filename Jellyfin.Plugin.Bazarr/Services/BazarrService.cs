@@ -785,7 +785,7 @@ public class BazarrService : IBazarrService
             throw new InvalidOperationException(
                 "Bazarr returned HTML instead of JSON. Possible causes:\n" +
                 "- Incorrect Bazarr URL (use base URL like http://localhost:6767, not http://localhost:6767/api)\n" +
-                "- Request being intercepted by a proxy or authentication layer\n" +
+                "- Proxy or authentication layer intercepting the request (if using auth proxy, bypass it for /api/* or use internal URL)\n" +
                 "- API endpoint doesn't exist or Bazarr version incompatibility\n\n" +
                 $"Response preview: {(preview.Length > 100 ? string.Concat(preview.AsSpan(0, 100), "...") : preview)}");
         }
