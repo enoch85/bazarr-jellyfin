@@ -25,3 +25,4 @@ dev-env/config/radarr/Backups/
 dev-env/config/jellyfin/
 dev-env/downloads/
 dev-env/media/
+ANALYSIS.md

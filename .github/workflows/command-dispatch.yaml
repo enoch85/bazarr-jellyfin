@@ -1,4 +1,4 @@
-# Allows for the definition of PR and Issue /commands
+# Allows for the definition of PR /commands
 name: '📟 Slash Command Dispatcher'
 
 on:
@@ -8,6 +8,8 @@ on:
 
 jobs:
   call:
+    # Only run on pull request comments, not issue comments
+    if: github.event.issue.pull_request
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-dispatch.yaml@master
     secrets:
       token: .

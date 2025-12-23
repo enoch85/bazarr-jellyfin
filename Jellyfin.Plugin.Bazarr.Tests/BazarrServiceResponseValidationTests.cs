@@ -49,7 +49,7 @@ public class BazarrServiceResponseValidationTests
         // Assert
         Assert.False(result.Success);
         Assert.Contains("HTML instead of JSON", result.Message);
-        Assert.Contains("intercepted", result.Message.ToLowerInvariant());
+        Assert.Contains("intercepting", result.Message.ToLowerInvariant());
     }
 
     [Fact]

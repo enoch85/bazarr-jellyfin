@@ -6,7 +6,7 @@ addic7ed:
   username: ''
   vip: false
 analytics:
-  enabled: true
+  enabled: false
 anidb:
   api_client: ''
   api_client_ver: 1
@@ -19,7 +19,7 @@ anticaptcha:
 assrt:
   token: ''
 auth:
-  apikey: devkey123456789
+  apikey: devkey123456789012345
   password: ''
   type: null
   username: ''
@@ -49,10 +49,12 @@ embeddedsubtitles:
   timeout: 600
   unknown_as_fallback: false
 general:
-  adaptive_searching: false
+  adaptive_searching: true
   adaptive_searching_delay: 3w
   adaptive_searching_delta: 1w
+  analytics_enabled: false
   anti_captcha_provider: null
+  apikey: devkey123456789012345
   auto_update: false
   base_url: ''
   branch: master
@@ -65,13 +67,10 @@ general:
   dont_notify_manual_actions: false
   embedded_subs_show_desired: true
   embedded_subtitles_parser: ffprobe
-  embeddedsubtitles_fallback: false
   enabled_integrations: []
-  enabled_providers:
-  - tvsubtitles
-  - supersubtitles
-  flask_secret_key: a01b94b8f49f8944bc99792eff4d4333
-  hi_extension: sdh
+  enabled_providers: []
+  flask_secret_key: de714b0accf834cead80a72850072f50
+  hi_extension: hi
   ignore_ass_subs: false
   ignore_pgs_subs: false
   ignore_vobsub_subs: false
@@ -79,8 +78,8 @@ general:
   language_equals: []
   minimum_score: 90
   minimum_score_movie: 70
-  movie_default_enabled: false
-  movie_default_profile: ''
+  movie_default_enabled: true
+  movie_default_profile: 1
   movie_tag_enabled: false
   multithreading: true
   page_size: 25
@@ -92,11 +91,10 @@ general:
   postprocessing_threshold: 90
   postprocessing_threshold_movie: 70
   remove_profile_tags: []
-  serie_default_enabled: false
-  serie_default_profile: ''
+  serie_default_enabled: true
+  serie_default_profile: 1
   serie_tag_enabled: false
   single_language: false
-  skip_hashed: false
   skip_hashing: false
   subfolder: current
   subfolder_custom: ''
@@ -104,7 +102,7 @@ general:
   theme: auto
   upgrade_frequency: 12
   upgrade_manual: true
-  upgrade_subs: false
+  upgrade_subs: true
   use_embedded_subs: true
   use_plex: false
   use_postprocessing: false
@@ -139,9 +137,6 @@ legendasdivx:
 legendasnet:
   password: ''
   username: ''
-legendastv:
-  password: ''
-  username: ''
 log:
   exclude_filter: ''
   ignore_case: false
@@ -152,7 +147,7 @@ movie_scores:
   edition: 1
   hash: 119
   hearing_impaired: 1
-  release_group: 15
+  release_group: 13
   resolution: 2
   source: 7
   streaming_service: 1
@@ -183,7 +178,7 @@ plex:
   auth_method: apikey
   disable_auto_migration: false
   email: ''
-  encryption_key: eTWaueJtbFvUYMher-AuUBUpHLbTE717ZczdvpdmScI
+  encryption_key: ueWydF-Jz8dXJleZKyAq95j6AawhJvbFQubrn-i4Zhk
   ip: 127.0.0.1
   migration_attempted: false
   migration_successful: false
@@ -206,7 +201,7 @@ plex:
 podnapisi:
   verify_ssl: true
 postgresql:
-  database: bazarr
+  database: ''
   enabled: false
   host: localhost
   password: ''
@@ -222,13 +217,13 @@ proxy:
   url: ''
   username: ''
 radarr:
-  apikey: radarrdevkey1234
+  apikey: radarrdevkey12345678901234
   base_url: ''
   defer_search_signalr: false
   excluded_tags: []
   full_update: Daily
   full_update_day: 6
-  full_update_hour: 5
+  full_update_hour: 4
   http_timeout: 60
   ip: radarr-dev
   movies_sync: 60
@@ -242,7 +237,7 @@ series_scores:
   episode: 30
   hash: 359
   hearing_impaired: 1
-  release_group: 15
+  release_group: 14
   resolution: 2
   season: 30
   series: 180
@@ -251,7 +246,7 @@ series_scores:
   video_codec: 2
   year: 90
 sonarr:
-  apikey: sonarrdevkey1234
+  apikey: sonarrdevkey12345678901234
   base_url: ''
   defer_search_signalr: false
   episodes_sync: 60
@@ -275,9 +270,6 @@ subdl:
 subf2m:
   user_agent: ''
   verify_ssl: true
-subscene:
-  password: ''
-  username: ''
 subsync:
   checker:
     blacklisted_languages: []
@@ -290,7 +282,6 @@ subsync:
   subsync_movie_threshold: 70
   subsync_threshold: 90
   use_subsync: false
-  use_subsync_movie: false
   use_subsync_movie_threshold: false
   use_subsync_threshold: false
 titlovi:
