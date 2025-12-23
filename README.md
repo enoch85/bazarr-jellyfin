@@ -152,6 +152,60 @@ git tag -a v1.x.x -m "Description" && git push origin v1.x.x
 
 The GitHub Actions workflow automatically builds and publishes the release.
 
+## Reverse Proxy Setup
+
+If Bazarr is behind an authentication proxy (Authentik, Authelia, Keycloak, etc.), the plugin **cannot authenticate** with OAuth2 - it only has an API key for Bazarr.
+
+**Solution**: Bypass authentication for Bazarr's API paths.
+
+### Traefik + Authentik
+
+```yaml
+http:
+  routers:
+    bazarr-api:
+      rule: "Host(`bazarr.example.com`) && PathPrefix(`/api`)"
+      service: bazarr
+      # No authentik middleware - direct access
+    bazarr-ui:
+      rule: "Host(`bazarr.example.com`)"
+      service: bazarr
+      middlewares:
+        - authentik
+      priority: 1
+```
+
+### Nginx
+
+```nginx
+location /api/ {
+    proxy_pass http://bazarr:6767/api/;
+    # No auth for API
+}
+
+location / {
+    proxy_pass http://bazarr:6767/;
+    auth_request /auth;
+}
+```
+
+### Docker Internal Network (Recommended)
+
+Use the internal container name instead of the external URL:
+
+```
+Plugin config: http://bazarr:6767
+Browser access: https://bazarr.example.com (with auth)
+```
+
+### Security Note
+
+Don't worry - this is safe:
+
+- **Internal URLs** (`localhost`, `http://bazarr:6767`) never leave your machine/Docker network
+- **Bazarr's API key** still protects all API endpoints, even without the auth proxy
+- You're only bypassing the *external* authentication layer, not removing security
+
 ## Troubleshooting
 
 ### Subtitle search shows "Search in progress"
@@ -170,37 +224,12 @@ Ensure the item exists in Radarr/Sonarr and Bazarr has synced. The plugin matche
 
 ### Connection test fails with HTML/redirect errors
 
-**Problem**: You see errors like:
-- `Bazarr returned HTML instead of JSON`
-- `Bazarr returned a redirect (302)`
-- `'<' is an invalid start of a value`
+See [Reverse Proxy Setup](#reverse-proxy-setup) if using an authentication proxy.
 
-**Common causes**:
-- Incorrect Bazarr URL (e.g., using `/api` suffix when it shouldn't be there)
-- Reverse proxy or authentication layer intercepting requests
-- Wrong port or protocol (http vs https)
-- Bazarr not accessible from Jellyfin's network
-
-**Troubleshooting steps**:
-
-1. **Verify the URL format**
-   - Use base URL only: `http://localhost:6767` (not `http://localhost:6767/api`)
-   - Include port if not using standard ports
-   - Use the correct protocol (http/https)
-
-2. **Test direct access**
-   - Try accessing `http://your-bazarr-url/api/system/languages` in a browser
-   - If it prompts for login or redirects, the plugin won't work with that URL
-   - You should see JSON data, not HTML
-
-3. **If behind a proxy/auth**
-   - Configure proxy to bypass authentication for `/api/*` paths
-   - Or use a direct internal URL (e.g., `http://bazarr:6767` in Docker)
-   - Or set up a separate endpoint without authentication
-
-4. **Check network access**
-   - Ensure Jellyfin can reach Bazarr (same network in Docker, firewall rules, etc.)
-   - Test with `curl http://your-bazarr-url/api/system/languages` from Jellyfin's container/host
+Otherwise, verify your URL format:
+- Use base URL: `http://localhost:6767` (not `http://localhost:6767/api`)
+- Check network access from Jellyfin to Bazarr
+- Test: `http://your-bazarr-url/api/system/languages` should return JSON, not HTML
 
 ## License
 
