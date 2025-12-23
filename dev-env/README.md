@@ -54,9 +54,13 @@ After running `./setup-dev.sh`, you may still need to:
 
 ### Jellyfin
 Setup wizard is completed automatically with user `dev`/`dev123`.
+Libraries and Bazarr plugin repository are pre-configured.
+
 1. Go to http://localhost:8096 and login
-2. Add media libraries pointing to `/media/movies` and `/media/tv`
-3. Install the Bazarr plugin from the repo
+2. Install the Bazarr plugin: Dashboard → Plugins → Catalog → Bazarr → Install
+3. Configure the plugin: Dashboard → Plugins → Bazarr
+   - URL: `http://bazarr-dev:6767`
+   - API Key: `devkey123456789`
 
 ## Plugin Configuration
 

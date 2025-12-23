@@ -212,6 +212,13 @@ setup_jellyfin() {
         curl -s -X POST "http://localhost:8096/Library/Refresh" \
             -H "X-Emby-Token: $token" > /dev/null 2>&1
         
+        # Add Bazarr plugin repository
+        log_info "Adding Bazarr plugin repository..."
+        curl -s -X POST "http://localhost:8096/Repositories" \
+            -H "X-Emby-Token: $token" \
+            -H "Content-Type: application/json" \
+            -d '[{"Name":"Jellyfin Stable","Url":"https://repo.jellyfin.org/files/plugin/manifest.json","Enabled":true},{"Name":"Bazarr Plugin","Url":"https://raw.githubusercontent.com/enoch85/bazarr-jellyfin/main/manifest.json","Enabled":true}]' > /dev/null 2>&1
+        
         log_success "Jellyfin setup complete (user: $DEV_USER / $DEV_PASS)"
     else
         log_warn "Could not authenticate - libraries need manual setup"
