@@ -1,0 +1,322 @@
+---
+addic7ed:
+  cookies: ''
+  password: ''
+  user_agent: ''
+  username: ''
+  vip: false
+analytics:
+  enabled: true
+anidb:
+  api_client: ''
+  api_client_ver: 1
+animetosho:
+  anidb_api_client: ''
+  anidb_api_client_ver: 1
+  search_threshold: 6
+anticaptcha:
+  anti_captcha_key: ''
+assrt:
+  token: ''
+auth:
+  apikey: devkey123456789
+  password: ''
+  type: null
+  username: ''
+avistaz:
+  cookies: ''
+  user_agent: ''
+backup:
+  day: 6
+  folder: /config/backup
+  frequency: Weekly
+  hour: 3
+  retention: 31
+betaseries:
+  token: ''
+cinemaz:
+  cookies: ''
+  user_agent: ''
+cors:
+  enabled: false
+deathbycaptcha:
+  password: ''
+  username: ''
+embeddedsubtitles:
+  fallback_lang: en
+  hi_fallback: false
+  included_codecs: []
+  timeout: 600
+  unknown_as_fallback: false
+general:
+  adaptive_searching: false
+  adaptive_searching_delay: 3w
+  adaptive_searching_delta: 1w
+  anti_captcha_provider: null
+  auto_update: false
+  base_url: ''
+  branch: master
+  chmod: '0640'
+  chmod_enabled: false
+  days_to_upgrade_subs: 7
+  debug: false
+  default_und_audio_lang: ''
+  default_und_embedded_subtitles_lang: ''
+  dont_notify_manual_actions: false
+  embedded_subs_show_desired: true
+  embedded_subtitles_parser: ffprobe
+  embeddedsubtitles_fallback: false
+  enabled_integrations: []
+  enabled_providers:
+  - tvsubtitles
+  - supersubtitles
+  flask_secret_key: a01b94b8f49f8944bc99792eff4d4333
+  hi_extension: sdh
+  ignore_ass_subs: false
+  ignore_pgs_subs: false
+  ignore_vobsub_subs: false
+  ip: 0.0.0.0
+  language_equals: []
+  minimum_score: 90
+  minimum_score_movie: 70
+  movie_default_enabled: false
+  movie_default_profile: ''
+  movie_tag_enabled: false
+  multithreading: true
+  page_size: 25
+  parse_embedded_audio_track: false
+  path_mappings: []
+  path_mappings_movie: []
+  port: 6767
+  postprocessing_cmd: ''
+  postprocessing_threshold: 90
+  postprocessing_threshold_movie: 70
+  remove_profile_tags: []
+  serie_default_enabled: false
+  serie_default_profile: ''
+  serie_tag_enabled: false
+  single_language: false
+  skip_hashed: false
+  skip_hashing: false
+  subfolder: current
+  subfolder_custom: ''
+  subzero_mods: ''
+  theme: auto
+  upgrade_frequency: 12
+  upgrade_manual: true
+  upgrade_subs: false
+  use_embedded_subs: true
+  use_plex: false
+  use_postprocessing: false
+  use_postprocessing_threshold: false
+  use_postprocessing_threshold_movie: false
+  use_radarr: true
+  use_scenename: true
+  use_sonarr: true
+  utf8_encode: true
+  wanted_search_frequency: 6
+  wanted_search_frequency_movie: 6
+hdbits:
+  passkey: ''
+  username: ''
+jimaku:
+  api_key: ''
+  enable_ai_subs: false
+  enable_archives_download: false
+  enable_name_search_fallback: true
+karagarga:
+  f_password: ''
+  f_username: ''
+  password: ''
+  username: ''
+ktuvit:
+  email: ''
+  hashed_password: ''
+legendasdivx:
+  password: ''
+  skip_wrong_fps: false
+  username: ''
+legendasnet:
+  password: ''
+  username: ''
+legendastv:
+  password: ''
+  username: ''
+log:
+  exclude_filter: ''
+  ignore_case: false
+  include_filter: ''
+  use_regex: false
+movie_scores:
+  audio_codec: 3
+  edition: 1
+  hash: 119
+  hearing_impaired: 1
+  release_group: 15
+  resolution: 2
+  source: 7
+  streaming_service: 1
+  title: 60
+  video_codec: 2
+  year: 30
+napiprojekt:
+  only_authors: false
+  only_real_names: false
+napisy24:
+  password: ''
+  username: ''
+opensubtitles:
+  password: ''
+  skip_wrong_fps: false
+  ssl: false
+  timeout: 15
+  use_tag_search: false
+  username: ''
+  vip: false
+opensubtitlescom:
+  include_ai_translated: false
+  password: ''
+  use_hash: true
+  username: ''
+plex:
+  apikey: ''
+  auth_method: apikey
+  disable_auto_migration: false
+  email: ''
+  encryption_key: eTWaueJtbFvUYMher-AuUBUpHLbTE717ZczdvpdmScI
+  ip: 127.0.0.1
+  migration_attempted: false
+  migration_successful: false
+  migration_timestamp: ''
+  movie_library: ''
+  port: 32400
+  series_library: ''
+  server_local: false
+  server_machine_id: ''
+  server_name: ''
+  server_url: ''
+  set_episode_added: false
+  set_movie_added: false
+  ssl: false
+  token: ''
+  update_movie_library: false
+  update_series_library: false
+  user_id: ''
+  username: ''
+podnapisi:
+  verify_ssl: true
+postgresql:
+  database: bazarr
+  enabled: false
+  host: localhost
+  password: ''
+  port: 5432
+  username: ''
+proxy:
+  exclude:
+  - localhost
+  - 127.0.0.1
+  password: ''
+  port: ''
+  type: null
+  url: ''
+  username: ''
+radarr:
+  apikey: radarrdevkey1234
+  base_url: ''
+  defer_search_signalr: false
+  excluded_tags: []
+  full_update: Daily
+  full_update_day: 6
+  full_update_hour: 5
+  http_timeout: 60
+  ip: radarr-dev
+  movies_sync: 60
+  only_monitored: false
+  port: 7878
+  ssl: false
+  sync_only_monitored_movies: false
+  use_ffprobe_cache: true
+series_scores:
+  audio_codec: 3
+  episode: 30
+  hash: 359
+  hearing_impaired: 1
+  release_group: 15
+  resolution: 2
+  season: 30
+  series: 180
+  source: 7
+  streaming_service: 1
+  video_codec: 2
+  year: 90
+sonarr:
+  apikey: sonarrdevkey1234
+  base_url: ''
+  defer_search_signalr: false
+  episodes_sync: 60
+  exclude_season_zero: false
+  excluded_series_types: []
+  excluded_tags: []
+  full_update: Daily
+  full_update_day: 6
+  full_update_hour: 4
+  http_timeout: 60
+  ip: sonarr-dev
+  only_monitored: false
+  port: 8989
+  series_sync: 60
+  ssl: false
+  sync_only_monitored_episodes: false
+  sync_only_monitored_series: false
+  use_ffprobe_cache: true
+subdl:
+  api_key: ''
+subf2m:
+  user_agent: ''
+  verify_ssl: true
+subscene:
+  password: ''
+  username: ''
+subsync:
+  checker:
+    blacklisted_languages: []
+    blacklisted_providers: []
+  debug: false
+  force_audio: false
+  gss: true
+  max_offset_seconds: 60
+  no_fix_framerate: true
+  subsync_movie_threshold: 70
+  subsync_threshold: 90
+  use_subsync: false
+  use_subsync_movie: false
+  use_subsync_movie_threshold: false
+  use_subsync_threshold: false
+titlovi:
+  password: ''
+  username: ''
+titulky:
+  approved_only: false
+  password: ''
+  skip_wrong_fps: false
+  username: ''
+translator:
+  default_score: 50
+  gemini_key: ''
+  gemini_model: gemini-2.0-flash
+  lingarr_url: http://lingarr:9876
+  translator_info: true
+  translator_type: google_translate
+turkcealtyaziorg:
+  cookies: ''
+  user_agent: ''
+whisperai:
+  endpoint: http://127.0.0.1:9000
+  loglevel: INFO
+  pass_video_name: false
+  response: 5
+  timeout: 3600
+xsubs:
+  password: ''
+  username: ''

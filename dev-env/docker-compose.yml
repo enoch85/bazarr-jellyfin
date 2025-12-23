@@ -1,0 +1,70 @@
+# Development environment for testing Bazarr-Jellyfin plugin
+# Run: docker compose up -d
+# Access:
+#   - Jellyfin: http://localhost:8096 (user: root, no password)
+#   - Bazarr: http://localhost:6767 (API Key: devkey123456789)
+#   - Sonarr: http://localhost:8989 (API Key: sonarrdevkey1234)
+#   - Radarr: http://localhost:7878 (API Key: radarrdevkey1234)
+#
+# All services have authentication DISABLED for development.
+
+services:
+  jellyfin:
+    image: jellyfin/jellyfin:latest
+    container_name: jellyfin-dev
+    ports:
+      - "8096:8096"
+    volumes:
+      - ./config/jellyfin:/config
+      - ./media:/media
+    environment:
+      - TZ=UTC
+    restart: unless-stopped
+
+  bazarr:
+    image: lscr.io/linuxserver/bazarr:latest
+    container_name: bazarr-dev
+    ports:
+      - "6767:6767"
+    volumes:
+      - ./config/bazarr:/config
+      - ./media:/media
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    restart: unless-stopped
+    depends_on:
+      - sonarr
+      - radarr
+
+  sonarr:
+    image: lscr.io/linuxserver/sonarr:latest
+    container_name: sonarr-dev
+    ports:
+      - "8989:8989"
+    volumes:
+      - ./config/sonarr:/config
+      - ./media/tv:/tv
+      - ./downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    restart: unless-stopped
+
+  radarr:
+    image: lscr.io/linuxserver/radarr:latest
+    container_name: radarr-dev
+    ports:
+      - "7878:7878"
+    volumes:
+      - ./config/radarr:/config
+      - ./media/movies:/movies
+      - ./downloads:/downloads
+    environment:
+      - PUID=1000
+      - PGID=1000
+      - TZ=UTC
+    restart: unless-stopped
+

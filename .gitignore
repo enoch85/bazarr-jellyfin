@@ -4,8 +4,24 @@ obj/
 .idea/
 artifacts
 
-# Test environment
-jellyfin-test/
-check-publish/
-publish/
-*.zip
+# Dev environment runtime data (keep docker-compose.yml, README.md, and config files)
+dev-env/config/bazarr/db/
+dev-env/config/bazarr/log/
+dev-env/config/bazarr/cache/
+dev-env/config/bazarr/backup/
+dev-env/config/bazarr/restore/
+dev-env/config/bazarr/config/analytics_visitor_id.txt
+dev-env/config/bazarr/config/announcements.json
+dev-env/config/bazarr/config/releases.txt
+dev-env/config/bazarr/config/*.old
+dev-env/config/sonarr/*.db*
+dev-env/config/sonarr/logs/
+dev-env/config/sonarr/MediaCover/
+dev-env/config/sonarr/Backups/
+dev-env/config/radarr/*.db*
+dev-env/config/radarr/logs/
+dev-env/config/radarr/MediaCover/
+dev-env/config/radarr/Backups/
+dev-env/config/jellyfin/
+dev-env/downloads/
+dev-env/media/
