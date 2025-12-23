@@ -20,9 +20,9 @@ log_warn() { echo -e "${YELLOW}[WARN]${NC} $1"; }
 log_error() { echo -e "${RED}[ERROR]${NC} $1"; }
 
 # Configuration
-SONARR_API_KEY="sonarrdevkey1234"
-RADARR_API_KEY="radarrdevkey1234"
-BAZARR_API_KEY="devkey123456789"
+SONARR_API_KEY="sonarrdevkey12345678901234"
+RADARR_API_KEY="radarrdevkey12345678901234"
+BAZARR_API_KEY="devkey123456789012345"
 DEV_USER="dev"
 DEV_PASS="dev123"
 
@@ -50,33 +50,45 @@ wait_for_service() {
 setup_sonarr() {
     log_info "Setting up Sonarr..."
     
-    # Check if user already exists by trying the API
-    if curl -s "http://localhost:8989/api/v3/system/status" \
+    # Check if API is responding
+    if ! curl -s "http://localhost:8989/api/v3/system/status" \
         -H "X-Api-Key: $SONARR_API_KEY" | grep -q "version"; then
-        log_success "Sonarr already configured"
-        return 0
+        log_warn "Sonarr API not responding"
+        return 1
     fi
     
-    # Sonarr v4 initialization endpoint
-    local init_response=$(curl -s -X POST "http://localhost:8989/initialize.json" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"username\": \"$DEV_USER\",
-            \"password\": \"$DEV_PASS\",
-            \"authenticationMethod\": \"forms\"
-        }" 2>/dev/null)
-    
-    if [ -n "$init_response" ]; then
-        log_success "Sonarr user created"
-    else
-        log_warn "Sonarr may already be initialized or using different auth"
+    # Add root folder if not exists
+    local root_folders=$(curl -s "http://localhost:8989/api/v3/rootfolder" -H "X-Api-Key: $SONARR_API_KEY")
+    if ! echo "$root_folders" | grep -q '"/tv"'; then
+        curl -s -X POST "http://localhost:8989/api/v3/rootfolder" \
+            -H "X-Api-Key: $SONARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"path": "/tv"}' > /dev/null 2>&1
+        log_info "Added root folder /tv"
     fi
     
-    # Add root folder via API
-    curl -s -X POST "http://localhost:8989/api/v3/rootfolder" \
-        -H "X-Api-Key: $SONARR_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d '{"path": "/tv"}' > /dev/null 2>&1 || true
+    # Get quality profile ID
+    local quality_id=$(curl -s "http://localhost:8989/api/v3/qualityprofile" -H "X-Api-Key: $SONARR_API_KEY" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+    
+    # Add Breaking Bad if not exists
+    if ! curl -s "http://localhost:8989/api/v3/series" -H "X-Api-Key: $SONARR_API_KEY" | grep -q "Breaking Bad"; then
+        # TVDB ID for Breaking Bad: 81189
+        curl -s -X POST "http://localhost:8989/api/v3/series" \
+            -H "X-Api-Key: $SONARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"Breaking Bad\",\"tvdbId\":81189,\"qualityProfileId\":$quality_id,\"rootFolderPath\":\"/tv\",\"path\":\"/tv/Breaking Bad\",\"monitored\":true,\"seasonFolder\":true,\"addOptions\":{\"searchForMissingEpisodes\":false}}" > /dev/null 2>&1
+        log_info "Added Breaking Bad"
+    fi
+    
+    # Add The Office (US) if not exists
+    if ! curl -s "http://localhost:8989/api/v3/series" -H "X-Api-Key: $SONARR_API_KEY" | grep -q "The Office"; then
+        # TVDB ID for The Office (US): 73244
+        curl -s -X POST "http://localhost:8989/api/v3/series" \
+            -H "X-Api-Key: $SONARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"The Office (US)\",\"tvdbId\":73244,\"qualityProfileId\":$quality_id,\"rootFolderPath\":\"/tv\",\"path\":\"/tv/The Office (US)\",\"monitored\":true,\"seasonFolder\":true,\"addOptions\":{\"searchForMissingEpisodes\":false}}" > /dev/null 2>&1
+        log_info "Added The Office (US)"
+    fi
     
     log_success "Sonarr setup complete"
 }
@@ -84,33 +96,52 @@ setup_sonarr() {
 setup_radarr() {
     log_info "Setting up Radarr..."
     
-    # Check if already configured
-    if curl -s "http://localhost:7878/api/v3/system/status" \
+    # Check if API is responding
+    if ! curl -s "http://localhost:7878/api/v3/system/status" \
         -H "X-Api-Key: $RADARR_API_KEY" | grep -q "version"; then
-        log_success "Radarr already configured"
-        return 0
+        log_warn "Radarr API not responding"
+        return 1
     fi
     
-    # Radarr v4/v5 initialization
-    local init_response=$(curl -s -X POST "http://localhost:7878/initialize.json" \
-        -H "Content-Type: application/json" \
-        -d "{
-            \"username\": \"$DEV_USER\",
-            \"password\": \"$DEV_PASS\",
-            \"authenticationMethod\": \"forms\"
-        }" 2>/dev/null)
-    
-    if [ -n "$init_response" ]; then
-        log_success "Radarr user created"
-    else
-        log_warn "Radarr may already be initialized or using different auth"
+    # Add root folder if not exists
+    local root_folders=$(curl -s "http://localhost:7878/api/v3/rootfolder" -H "X-Api-Key: $RADARR_API_KEY")
+    if ! echo "$root_folders" | grep -q '"/movies"'; then
+        curl -s -X POST "http://localhost:7878/api/v3/rootfolder" \
+            -H "X-Api-Key: $RADARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d '{"path": "/movies"}' > /dev/null 2>&1
+        log_info "Added root folder /movies"
     fi
     
-    # Add root folder via API
-    curl -s -X POST "http://localhost:7878/api/v3/rootfolder" \
-        -H "X-Api-Key: $RADARR_API_KEY" \
-        -H "Content-Type: application/json" \
-        -d '{"path": "/movies"}' > /dev/null 2>&1 || true
+    # Get quality profile ID
+    local quality_id=$(curl -s "http://localhost:7878/api/v3/qualityprofile" -H "X-Api-Key: $RADARR_API_KEY" | grep -o '"id":[0-9]*' | head -1 | cut -d: -f2)
+    
+    # Add Big Buck Bunny if not exists (TMDB: 10378)
+    if ! curl -s "http://localhost:7878/api/v3/movie" -H "X-Api-Key: $RADARR_API_KEY" | grep -q "Big Buck Bunny"; then
+        curl -s -X POST "http://localhost:7878/api/v3/movie" \
+            -H "X-Api-Key: $RADARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"Big Buck Bunny\",\"year\":2008,\"tmdbId\":10378,\"qualityProfileId\":$quality_id,\"rootFolderPath\":\"/movies\",\"path\":\"/movies/Big Buck Bunny (2008)\",\"monitored\":true,\"addOptions\":{\"searchForMovie\":false}}" > /dev/null 2>&1
+        log_info "Added Big Buck Bunny"
+    fi
+    
+    # Add Sintel if not exists (TMDB: 45745)
+    if ! curl -s "http://localhost:7878/api/v3/movie" -H "X-Api-Key: $RADARR_API_KEY" | grep -q "Sintel"; then
+        curl -s -X POST "http://localhost:7878/api/v3/movie" \
+            -H "X-Api-Key: $RADARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"Sintel\",\"year\":2010,\"tmdbId\":45745,\"qualityProfileId\":$quality_id,\"rootFolderPath\":\"/movies\",\"path\":\"/movies/Sintel (2010)\",\"monitored\":true,\"addOptions\":{\"searchForMovie\":false}}" > /dev/null 2>&1
+        log_info "Added Sintel"
+    fi
+    
+    # Add Tears of Steel if not exists (TMDB: 110416)
+    if ! curl -s "http://localhost:7878/api/v3/movie" -H "X-Api-Key: $RADARR_API_KEY" | grep -q "Tears of Steel"; then
+        curl -s -X POST "http://localhost:7878/api/v3/movie" \
+            -H "X-Api-Key: $RADARR_API_KEY" \
+            -H "Content-Type: application/json" \
+            -d "{\"title\":\"Tears of Steel\",\"year\":2012,\"tmdbId\":110416,\"qualityProfileId\":$quality_id,\"rootFolderPath\":\"/movies\",\"path\":\"/movies/Tears of Steel (2012)\",\"monitored\":true,\"addOptions\":{\"searchForMovie\":false}}" > /dev/null 2>&1
+        log_info "Added Tears of Steel"
+    fi
     
     log_success "Radarr setup complete"
 }
@@ -118,30 +149,106 @@ setup_radarr() {
 setup_bazarr() {
     log_info "Setting up Bazarr..."
     
-    # Enable all languages in SQLite database
-    if [ -f "./config/bazarr/db/bazarr.db" ]; then
-        sqlite3 ./config/bazarr/db/bazarr.db "UPDATE table_settings_languages SET enabled = 1;" 2>/dev/null || true
-        local count=$(sqlite3 ./config/bazarr/db/bazarr.db "SELECT COUNT(*) FROM table_settings_languages WHERE enabled = 1;" 2>/dev/null || echo "0")
-        log_success "Enabled $count languages in Bazarr"
-    else
-        log_warn "Bazarr database not found yet - languages will be enabled on next run"
+    # Wait for Bazarr database to be created
+    local max_wait=30
+    local waited=0
+    while [ ! -f "./config/bazarr/db/bazarr.db" ] && [ $waited -lt $max_wait ]; do
+        sleep 2
+        waited=$((waited + 2))
+    done
+    
+    if [ ! -f "./config/bazarr/db/bazarr.db" ]; then
+        log_warn "Bazarr database not found - skipping database setup"
+        return 1
     fi
     
-    # Configure enabled providers via API
-    # First, get current settings
-    local settings=$(curl -s "http://localhost:6767/api/system/settings" \
-        -H "X-API-KEY: $BAZARR_API_KEY" 2>/dev/null)
+    # Enable ALL languages in SQLite database
+    sqlite3 ./config/bazarr/db/bazarr.db "UPDATE table_settings_languages SET enabled = 1;" 2>/dev/null || true
+    local lang_count=$(sqlite3 ./config/bazarr/db/bazarr.db "SELECT COUNT(*) FROM table_settings_languages WHERE enabled = 1;" 2>/dev/null || echo "0")
+    log_info "Enabled $lang_count languages"
     
-    if [ -n "$settings" ]; then
-        # Update enabled_providers in config.yaml directly (API doesn't easily support this)
-        if [ -f "./config/bazarr/config/config.yaml" ]; then
-            # Check if providers are already set
-            if ! grep -q "supersubtitles" ./config/bazarr/config/config.yaml 2>/dev/null; then
-                # Use sed to update enabled_providers list
-                sed -i 's/enabled_providers:.*/enabled_providers:\n  - tvsubtitles\n  - supersubtitles/' ./config/bazarr/config/config.yaml 2>/dev/null || true
-                log_info "Configured subtitle providers"
-            fi
+    # Create default language profile (English) if not exists
+    local profile_exists=$(sqlite3 ./config/bazarr/db/bazarr.db "SELECT COUNT(*) FROM table_languages_profiles WHERE profileId = 1;" 2>/dev/null || echo "0")
+    if [ "$profile_exists" = "0" ]; then
+        sqlite3 ./config/bazarr/db/bazarr.db "INSERT INTO table_languages_profiles (profileId, items, name, cutoff, originalFormat) VALUES (1, '[{\"id\": 1, \"language\": \"en\", \"hi\": \"False\", \"forced\": \"False\", \"audio_exclude\": \"False\"}]', 'English', NULL, 0);" 2>/dev/null || true
+        log_info "Created English language profile"
+    fi
+    
+    # Update config file - replace auth.apikey value (Bazarr generates a random one)
+    if [ -f "./config/bazarr/config/config.yaml" ]; then
+        # Replace the random auth apikey with our known key
+        sed -i "s/^  apikey: [a-f0-9]\{32\}$/  apikey: $BAZARR_API_KEY/" ./config/bazarr/config/config.yaml 2>/dev/null || true
+        
+        # Enable default profiles for movies and series
+        sed -i "s/movie_default_enabled: false/movie_default_enabled: true/" ./config/bazarr/config/config.yaml 2>/dev/null || true
+        sed -i "s/movie_default_profile: ''/movie_default_profile: '1'/" ./config/bazarr/config/config.yaml 2>/dev/null || true
+        sed -i "s/serie_default_enabled: false/serie_default_enabled: true/" ./config/bazarr/config/config.yaml 2>/dev/null || true
+        sed -i "s/serie_default_profile: ''/serie_default_profile: '1'/" ./config/bazarr/config/config.yaml 2>/dev/null || true
+        
+        log_info "Updated Bazarr config"
+    fi
+    
+    # Restart Bazarr to apply config changes
+    log_info "Restarting Bazarr to apply settings..."
+    docker restart bazarr-dev > /dev/null 2>&1
+    sleep 10
+    
+    # Wait for Bazarr to be ready again
+    wait_for_service "http://localhost:6767" "Bazarr"
+    
+    # Give Bazarr time to establish SignalR connections to Radarr/Sonarr
+    log_info "Waiting for Bazarr to connect to Radarr/Sonarr..."
+    sleep 10
+    
+    # Trigger sync with Radarr and Sonarr using POST with JSON body
+    log_info "Syncing movies from Radarr..."
+    curl -s -X POST -H "X-API-KEY: $BAZARR_API_KEY" -H "Content-Type: application/json" \
+        "http://localhost:6767/api/system/tasks" -d '{"taskid":"update_movies"}' > /dev/null 2>&1
+    
+    # Wait for movie sync to complete (can take 15-30 seconds)
+    log_info "Waiting for movie sync to complete..."
+    local max_attempts=12
+    local attempt=1
+    local movie_count=0
+    while [ $attempt -le $max_attempts ]; do
+        sleep 5
+        movie_count=$(curl -s -H "X-API-KEY: $BAZARR_API_KEY" "http://localhost:6767/api/movies" 2>/dev/null | grep -o '"total":[0-9]*' | cut -d: -f2 || echo "0")
+        if [ "$movie_count" -gt 0 ]; then
+            log_success "Movies synced: $movie_count"
+            break
         fi
+        echo -n "."
+        attempt=$((attempt + 1))
+    done
+    echo ""
+    
+    log_info "Syncing series from Sonarr..."
+    curl -s -X POST -H "X-API-KEY: $BAZARR_API_KEY" -H "Content-Type: application/json" \
+        "http://localhost:6767/api/system/tasks" -d '{"taskid":"update_series"}' > /dev/null 2>&1
+    
+    # Wait for series sync to complete
+    log_info "Waiting for series sync to complete..."
+    attempt=1
+    local series_count=0
+    while [ $attempt -le $max_attempts ]; do
+        sleep 5
+        series_count=$(curl -s -H "X-API-KEY: $BAZARR_API_KEY" "http://localhost:6767/api/series" 2>/dev/null | grep -o '"total":[0-9]*' | cut -d: -f2 || echo "0")
+        if [ "$series_count" -gt 0 ]; then
+            log_success "Series synced: $series_count"
+            break
+        fi
+        echo -n "."
+        attempt=$((attempt + 1))
+    done
+    echo ""
+    
+    # Final verification
+    movie_count=$(curl -s -H "X-API-KEY: $BAZARR_API_KEY" "http://localhost:6767/api/movies" 2>/dev/null | grep -o '"total":[0-9]*' | cut -d: -f2 || echo "0")
+    series_count=$(curl -s -H "X-API-KEY: $BAZARR_API_KEY" "http://localhost:6767/api/series" 2>/dev/null | grep -o '"total":[0-9]*' | cut -d: -f2 || echo "0")
+    log_info "Final count: $movie_count movies and $series_count series synced from *arr"
+    
+    if [ "$movie_count" -eq 0 ] && [ "$series_count" -eq 0 ]; then
+        log_warn "Sync may have failed - check Bazarr logs with: docker compose logs bazarr"
     fi
     
     log_success "Bazarr setup complete"
@@ -226,27 +333,58 @@ setup_jellyfin() {
 }
 
 create_mock_media() {
-    log_info "Creating mock media files..."
+    log_info "Creating mock media files with ffmpeg (this may take a moment)..."
+    
+    # Check if ffmpeg is available
+    if ! command -v ffmpeg &> /dev/null; then
+        log_warn "ffmpeg not found, installing..."
+        sudo apt-get update -qq && sudo apt-get install -y -qq ffmpeg > /dev/null 2>&1
+    fi
     
     # Movies (using Blender open movies as safe examples)
+    # Create real video files with test pattern so Radarr/Bazarr can properly detect them
     mkdir -p "./media/movies/Big Buck Bunny (2008)"
     mkdir -p "./media/movies/Sintel (2010)"
     mkdir -p "./media/movies/Tears of Steel (2012)"
-    touch "./media/movies/Big Buck Bunny (2008)/Big Buck Bunny (2008).mp4"
-    touch "./media/movies/Sintel (2010)/Sintel (2010).mp4"
-    touch "./media/movies/Tears of Steel (2012)/Tears of Steel (2012).mp4"
     
-    # TV Shows
+    # Create 2-minute test videos (~10MB each) with color bars and silent audio
+    for movie in "Big Buck Bunny (2008)" "Sintel (2010)" "Tears of Steel (2012)"; do
+        local file="./media/movies/$movie/$movie.mp4"
+        if [ ! -s "$file" ]; then
+            log_info "Creating $movie..."
+            ffmpeg -f lavfi -i testsrc=duration=120:size=1280x720:rate=24 \
+                   -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+                   -c:v libx264 -preset ultrafast -crf 28 \
+                   -c:a aac -shortest \
+                   -y "$file" 2>/dev/null
+        fi
+    done
+    
+    # TV Shows - 1-minute test videos per episode (~5MB each)
     mkdir -p "./media/tv/Breaking Bad/Season 01"
     mkdir -p "./media/tv/Breaking Bad/Season 02"
     mkdir -p "./media/tv/The Office (US)/Season 01"
-    touch "./media/tv/Breaking Bad/Season 01/Breaking Bad - S01E01 - Pilot.mp4"
-    touch "./media/tv/Breaking Bad/Season 01/Breaking Bad - S01E02 - Cat's in the Bag.mp4"
-    touch "./media/tv/Breaking Bad/Season 02/Breaking Bad - S02E01 - Seven Thirty-Seven.mp4"
-    touch "./media/tv/The Office (US)/Season 01/The Office (US) - S01E01 - Pilot.mp4"
-    touch "./media/tv/The Office (US)/Season 01/The Office (US) - S01E02 - Diversity Day.mp4"
     
-    log_success "Mock media created (3 movies, 2 TV shows)"
+    local episodes=(
+        "./media/tv/Breaking Bad/Season 01/Breaking Bad - S01E01 - Pilot.mp4"
+        "./media/tv/Breaking Bad/Season 01/Breaking Bad - S01E02 - Cat's in the Bag.mp4"
+        "./media/tv/Breaking Bad/Season 02/Breaking Bad - S02E01 - Seven Thirty-Seven.mp4"
+        "./media/tv/The Office (US)/Season 01/The Office (US) - S01E01 - Pilot.mp4"
+        "./media/tv/The Office (US)/Season 01/The Office (US) - S01E02 - Diversity Day.mp4"
+    )
+    
+    for ep in "${episodes[@]}"; do
+        if [ ! -s "$ep" ]; then
+            log_info "Creating $(basename "$ep")..."
+            ffmpeg -f lavfi -i testsrc=duration=60:size=1280x720:rate=24 \
+                   -f lavfi -i anullsrc=channel_layout=stereo:sample_rate=44100 \
+                   -c:v libx264 -preset ultrafast -crf 28 \
+                   -c:a aac -shortest \
+                   -y "$ep" 2>/dev/null
+        fi
+    done
+    
+    log_success "Mock media created (3 movies @ 2min, 5 episodes @ 1min)"
 }
 
 create_media_dirs() {
@@ -255,6 +393,101 @@ create_media_dirs() {
     mkdir -p ./media/movies
     mkdir -p ./downloads
     log_success "Media directories created"
+}
+
+# Pre-create config files with our API keys before containers start
+create_config_files() {
+    log_info "Creating config files with API keys..."
+    
+    # Sonarr config
+    mkdir -p ./config/sonarr
+    if [ ! -f "./config/sonarr/config.xml" ]; then
+        cat > ./config/sonarr/config.xml << EOF
+<Config>
+  <BindAddress>*</BindAddress>
+  <Port>8989</Port>
+  <SslPort>9898</SslPort>
+  <EnableSsl>False</EnableSsl>
+  <LaunchBrowser>False</LaunchBrowser>
+  <ApiKey>$SONARR_API_KEY</ApiKey>
+  <AuthenticationMethod>None</AuthenticationMethod>
+  <AuthenticationRequired>DisabledForLocalAddresses</AuthenticationRequired>
+  <Branch>main</Branch>
+  <LogLevel>info</LogLevel>
+  <InstanceName>Sonarr</InstanceName>
+  <UpdateMechanism>Docker</UpdateMechanism>
+</Config>
+EOF
+    fi
+    
+    # Radarr config
+    mkdir -p ./config/radarr
+    if [ ! -f "./config/radarr/config.xml" ]; then
+        cat > ./config/radarr/config.xml << EOF
+<Config>
+  <BindAddress>*</BindAddress>
+  <Port>7878</Port>
+  <SslPort>9898</SslPort>
+  <EnableSsl>False</EnableSsl>
+  <LaunchBrowser>False</LaunchBrowser>
+  <ApiKey>$RADARR_API_KEY</ApiKey>
+  <AuthenticationMethod>None</AuthenticationMethod>
+  <AuthenticationRequired>DisabledForLocalAddresses</AuthenticationRequired>
+  <Branch>master</Branch>
+  <LogLevel>info</LogLevel>
+  <InstanceName>Radarr</InstanceName>
+  <UpdateMechanism>Docker</UpdateMechanism>
+</Config>
+EOF
+    fi
+    
+    # Bazarr config - Note: Bazarr will merge this with defaults on first start
+    # The auth.apikey is what's used for API authentication
+    mkdir -p ./config/bazarr/config
+    if [ ! -f "./config/bazarr/config/config.yaml" ]; then
+        cat > ./config/bazarr/config/config.yaml << EOF
+analytics:
+  enabled: false
+auth:
+  apikey: $BAZARR_API_KEY
+  type: null
+general:
+  ip: 0.0.0.0
+  port: 6767
+  base_url: ''
+  debug: false
+  branch: master
+  auto_update: false
+  single_language: false
+  use_sonarr: true
+  use_radarr: true
+  apikey: $BAZARR_API_KEY
+  analytics_enabled: false
+  movie_default_enabled: true
+  movie_default_profile: '1'
+  serie_default_enabled: true
+  serie_default_profile: '1'
+sonarr:
+  ip: sonarr-dev
+  port: 8989
+  apikey: $SONARR_API_KEY
+  ssl: false
+  base_url: ''
+  only_monitored: false
+  series_sync: 60
+  episodes_sync: 60
+radarr:
+  ip: radarr-dev
+  port: 7878
+  apikey: $RADARR_API_KEY
+  ssl: false
+  base_url: ''
+  only_monitored: false
+  movies_sync: 60
+EOF
+    fi
+    
+    log_success "Config files created"
 }
 
 show_summary() {
@@ -295,8 +528,9 @@ main() {
     echo "=============================================="
     echo ""
     
-    # Create directories and mock media
+    # Create directories, config files, and mock media
     create_media_dirs
+    create_config_files
     create_mock_media
     
     # Start containers

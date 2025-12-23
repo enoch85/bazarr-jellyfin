@@ -29,6 +29,8 @@ services:
     volumes:
       - ./config/bazarr:/config
       - ./media:/media
+      - ./media/movies:/movies    # Same path as Radarr sees
+      - ./media/tv:/tv            # Same path as Sonarr sees
     environment:
       - PUID=1000
       - PGID=1000
