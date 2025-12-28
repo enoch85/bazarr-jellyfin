@@ -74,6 +74,16 @@ public class BazarrSubtitleProvider : ISubtitleProvider
     /// <inheritdoc />
     public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
     {
+        // Skip automated requests (media scans, scheduled tasks, etc.)
+        // Bazarr searches are slow by design - they query multiple subtitle providers in real-time
+        // which can take 1-2 minutes per search. This would block media scans indefinitely.
+        // This plugin is designed for manual user-initiated searches only.
+        if (request.IsAutomated)
+        {
+            _logger.LogDebug("Skipping automated subtitle search - Bazarr is designed for manual searches only");
+            return Enumerable.Empty<RemoteSubtitleInfo>();
+        }
+
         var config = Plugin.Instance?.Configuration;
         if (config == null || string.IsNullOrEmpty(config.BazarrUrl) || string.IsNullOrEmpty(config.BazarrApiKey))
         {
