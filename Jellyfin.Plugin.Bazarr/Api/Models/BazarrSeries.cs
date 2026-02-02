@@ -1,3 +1,4 @@
+using System.Collections.Generic;
 using System.Text.Json.Serialization;
 
 namespace Jellyfin.Plugin.Bazarr.Api.Models;
@@ -30,6 +31,12 @@ public class BazarrSeries
     /// </summary>
     [JsonPropertyName("imdbId")]
     public string? ImdbId { get; set; }
+
+    /// <summary>
+    /// Gets or sets the alternative titles (from Sonarr, includes translated titles).
+    /// </summary>
+    [JsonPropertyName("alternativeTitles")]
+    public IReadOnlyList<string>? AlternativeTitles { get; set; }
 
     /// <summary>
     /// Gets or sets the folder path.
