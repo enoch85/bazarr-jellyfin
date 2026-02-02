@@ -33,14 +33,16 @@ public class EpisodeSubtitleHandler
     /// <summary>
     /// Searches for episode subtitles.
     /// </summary>
-    /// <param name="providerIds">The provider IDs (TVDB, IMDB, etc.).</param>
-    /// <param name="seriesName">The series name.</param>
+    /// <param name="providerIds">The provider IDs (TVDB, IMDB, etc.) - typically episode-level.</param>
+    /// <param name="seriesName">The series name (may be localized).</param>
     /// <param name="seasonNumber">The season number.</param>
     /// <param name="episodeNumber">The episode number.</param>
     /// <param name="language">The full language string.</param>
     /// <param name="twoLetterISOLanguageName">The two-letter ISO language code.</param>
     /// <param name="timeoutSeconds">The search timeout in seconds.</param>
     /// <param name="cancellationToken">The cancellation token.</param>
+    /// <param name="seriesProviderIds">Optional series-level provider IDs (TVDB, IMDB at series level).</param>
+    /// <param name="originalSeriesName">Optional original (non-localized) series name.</param>
     /// <returns>A list of remote subtitle info.</returns>
     public async Task<IEnumerable<RemoteSubtitleInfo>> SearchAsync(
         Dictionary<string, string> providerIds,
@@ -50,29 +52,72 @@ public class EpisodeSubtitleHandler
         string? language,
         string? twoLetterISOLanguageName,
         int timeoutSeconds,
-        CancellationToken cancellationToken)
+        CancellationToken cancellationToken,
+        Dictionary<string, string>? seriesProviderIds = null,
+        string? originalSeriesName = null)
     {
         // Try to find the episode in Bazarr
         int? sonarrEpisodeId = null;
 
         // Log available provider IDs for debugging
         _logger.LogDebug(
-            "Episode search request - Series: {Series}, S{Season}E{Episode}, ProviderIds: {ProviderIds}",
+            "Episode search request - Series: {Series} (Original: {OriginalSeries}), S{Season}E{Episode}, EpisodeProviderIds: {ProviderIds}, SeriesProviderIds: {SeriesProviderIds}",
             seriesName,
+            originalSeriesName ?? "(not available)",
             seasonNumber,
             episodeNumber,
-            string.Join(", ", providerIds.Select(kv => $"{kv.Key}={kv.Value}")));
+            string.Join(", ", providerIds.Select(kv => $"{kv.Key}={kv.Value}")),
+            seriesProviderIds != null ? string.Join(", ", seriesProviderIds.Select(kv => $"{kv.Key}={kv.Value}")) : "(not available)");
 
-        // First try by TVDB ID - note that ProviderIds contains EPISODE provider IDs
-        // For episodes, the TVDB ID in ProviderIds is the EPISODE's TVDB ID, not the series!
-        // This will only work if Bazarr happens to have a series with a matching TVDB ID
-        if (providerIds.TryGetValue("Tvdb", out var tvdbIdStr) &&
+        // PRIORITY 1: Try series-level TVDB ID (most reliable when available)
+        if (sonarrEpisodeId == null &&
+            seriesProviderIds?.TryGetValue("Tvdb", out var seriesTvdbIdStr) == true &&
+            int.TryParse(seriesTvdbIdStr, out var seriesTvdbId) &&
+            seasonNumber.HasValue &&
+            episodeNumber.HasValue)
+        {
+            _logger.LogDebug(
+                "Trying series-level TVDB ID {TvdbId}, S{Season}E{Episode}",
+                seriesTvdbId,
+                seasonNumber.Value,
+                episodeNumber.Value);
+
+            sonarrEpisodeId = await _bazarrService.FindSonarrEpisodeIdAsync(
+                seriesTvdbId,
+                seasonNumber.Value,
+                episodeNumber.Value,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        // PRIORITY 2: Try series-level IMDB ID
+        if (sonarrEpisodeId == null &&
+            seriesProviderIds?.TryGetValue("Imdb", out var seriesImdbId) == true &&
+            !string.IsNullOrEmpty(seriesImdbId) &&
+            seasonNumber.HasValue &&
+            episodeNumber.HasValue)
+        {
+            _logger.LogDebug(
+                "Trying series-level IMDB ID {ImdbId}, S{Season}E{Episode}",
+                seriesImdbId,
+                seasonNumber.Value,
+                episodeNumber.Value);
+
+            sonarrEpisodeId = await _bazarrService.FindSonarrEpisodeIdByImdbAsync(
+                seriesImdbId,
+                seasonNumber.Value,
+                episodeNumber.Value,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        // PRIORITY 3: Try episode-level TVDB ID (rarely works - episode ID ≠ series ID)
+        if (sonarrEpisodeId == null &&
+            providerIds.TryGetValue("Tvdb", out var tvdbIdStr) &&
             int.TryParse(tvdbIdStr, out var tvdbId) &&
             seasonNumber.HasValue &&
             episodeNumber.HasValue)
         {
             _logger.LogDebug(
-                "Trying TVDB ID {TvdbId} (note: this is the episode's TVDB ID), S{Season}E{Episode}",
+                "Trying episode-level TVDB ID {TvdbId} (note: this is the episode's TVDB ID), S{Season}E{Episode}",
                 tvdbId,
                 seasonNumber.Value,
                 episodeNumber.Value);
@@ -84,7 +129,7 @@ public class EpisodeSubtitleHandler
                 cancellationToken).ConfigureAwait(false);
         }
 
-        // Try IMDB ID - IMDB uses series-level IDs for episodes, so this is more reliable!
+        // PRIORITY 4: Try episode-level IMDB ID
         if (sonarrEpisodeId == null &&
             providerIds.TryGetValue("Imdb", out var imdbId) &&
             !string.IsNullOrEmpty(imdbId) &&
@@ -92,7 +137,7 @@ public class EpisodeSubtitleHandler
             episodeNumber.HasValue)
         {
             _logger.LogDebug(
-                "Trying IMDB ID {ImdbId}, S{Season}E{Episode}",
+                "Trying episode-level IMDB ID {ImdbId}, S{Season}E{Episode}",
                 imdbId,
                 seasonNumber.Value,
                 episodeNumber.Value);
@@ -104,14 +149,33 @@ public class EpisodeSubtitleHandler
                 cancellationToken).ConfigureAwait(false);
         }
 
-        // Fallback to series title matching if ID lookups failed
+        // PRIORITY 5: Try original series name first (non-localized)
+        if (sonarrEpisodeId == null &&
+            !string.IsNullOrEmpty(originalSeriesName) &&
+            seasonNumber.HasValue &&
+            episodeNumber.HasValue)
+        {
+            _logger.LogInformation(
+                "ID lookups failed, trying original title match for '{Series}' S{Season}E{Episode}",
+                originalSeriesName,
+                seasonNumber.Value,
+                episodeNumber.Value);
+
+            sonarrEpisodeId = await _bazarrService.FindSonarrEpisodeIdByTitleAsync(
+                originalSeriesName,
+                seasonNumber.Value,
+                episodeNumber.Value,
+                cancellationToken).ConfigureAwait(false);
+        }
+
+        // PRIORITY 6: Fallback to localized series name (may match via alternativeTitles)
         if (sonarrEpisodeId == null &&
             !string.IsNullOrEmpty(seriesName) &&
             seasonNumber.HasValue &&
             episodeNumber.HasValue)
         {
             _logger.LogInformation(
-                "ID lookups failed, trying title match for '{Series}' S{Season}E{Episode}",
+                "Trying localized title match for '{Series}' S{Season}E{Episode}",
                 seriesName,
                 seasonNumber.Value,
                 episodeNumber.Value);

@@ -261,6 +261,23 @@ public class BazarrService : IBazarrService
                 string.Equals(NormalizeTitle(s.Title), normalizedSearch, StringComparison.OrdinalIgnoreCase));
         }
 
+        // Try alternative titles (includes translated titles from Sonarr/TVDB)
+        if (show == null)
+        {
+            show = seriesList.FirstOrDefault(s =>
+                s.AlternativeTitles?.Any(alt =>
+                    string.Equals(alt, seriesTitle, StringComparison.OrdinalIgnoreCase)) == true);
+        }
+
+        // Try partial match on alternative titles
+        if (show == null)
+        {
+            show = seriesList.FirstOrDefault(s =>
+                s.AlternativeTitles?.Any(alt =>
+                    alt.Contains(seriesTitle, StringComparison.OrdinalIgnoreCase) ||
+                    seriesTitle.Contains(alt, StringComparison.OrdinalIgnoreCase)) == true);
+        }
+
         if (show == null)
         {
             _logger.LogWarning(

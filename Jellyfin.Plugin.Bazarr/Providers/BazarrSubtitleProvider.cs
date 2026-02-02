@@ -126,6 +126,34 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                     return Enumerable.Empty<RemoteSubtitleInfo>();
                 }
 
+                // Try to get series-level info from the library
+                Dictionary<string, string>? seriesProviderIds = null;
+                string? originalSeriesName = null;
+
+                if (!string.IsNullOrEmpty(request.MediaPath))
+                {
+                    try
+                    {
+                        var item = _libraryManager.FindByPath(request.MediaPath, false);
+                        if (item is Episode episode && episode.Series != null)
+                        {
+                            var series = episode.Series;
+                            seriesProviderIds = series.ProviderIds;
+                            originalSeriesName = series.OriginalTitle;
+
+                            _logger.LogDebug(
+                                "Resolved series from MediaPath: {SeriesName} (Original: {OriginalTitle}), SeriesProviderIds: {ProviderIds}",
+                                series.Name,
+                                originalSeriesName ?? "(none)",
+                                seriesProviderIds != null ? string.Join(", ", seriesProviderIds.Select(kv => $"{kv.Key}={kv.Value}")) : "(none)");
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        _logger.LogDebug(ex, "Could not resolve series from MediaPath: {Path}", request.MediaPath);
+                    }
+                }
+
                 return await _episodeHandler.SearchAsync(
                     request.ProviderIds,
                     request.SeriesName,
@@ -134,7 +162,9 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                     request.Language,
                     request.TwoLetterISOLanguageName,
                     timeout,
-                    cancellationToken).ConfigureAwait(false);
+                    cancellationToken,
+                    seriesProviderIds,
+                    originalSeriesName).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
