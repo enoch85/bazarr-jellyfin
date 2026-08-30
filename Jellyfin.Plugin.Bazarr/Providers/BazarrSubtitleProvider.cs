@@ -169,7 +169,9 @@ public class BazarrSubtitleProvider : ISubtitleProvider
         }
         catch (Exception ex)
         {
+            // Jellyfin swallows provider exceptions, so the user would otherwise just see "no results".
             _logger.LogError(ex, "Error searching Bazarr for subtitles");
+            return SubtitlePlaceholder.SearchFailed(ex.Message);
         }
 
         return Enumerable.Empty<RemoteSubtitleInfo>();
@@ -179,6 +181,11 @@ public class BazarrSubtitleProvider : ISubtitleProvider
     public async Task<SubtitleResponse> GetSubtitles(string id, CancellationToken cancellationToken)
     {
         _logger.LogInformation("Downloading subtitle from Bazarr: {Id}", id);
+
+        if (id.StartsWith(SubtitlePlaceholder.IdPrefix, StringComparison.Ordinal))
+        {
+            throw new InvalidOperationException("This entry is a status message, not a subtitle. Run the search again once Bazarr has results.");
+        }
 
         // ID format: "movie|episode|radarrId|sonarrEpisodeId|provider|hi|forced|subtitle(escaped)"
         var parts = id.Split('|');
@@ -259,11 +266,10 @@ public class BazarrSubtitleProvider : ISubtitleProvider
 
             if (itemType == "movie")
             {
-                // Find movie by Radarr ID via TMDB lookup
+                // Match on IMDB - Bazarr's /api/movies response carries no TMDB ID
                 var radarrMovie = await _bazarrService.GetMovieByRadarrIdAsync(bazarrId, cancellationToken).ConfigureAwait(false);
-                if (radarrMovie != null && radarrMovie.TmdbId.HasValue)
+                if (!string.IsNullOrEmpty(radarrMovie?.ImdbId))
                 {
-                    var tmdbIdStr = radarrMovie.TmdbId.Value.ToString(System.Globalization.CultureInfo.InvariantCulture);
                     var movies = _libraryManager.GetItemList(new InternalItemsQuery
                     {
                         IncludeItemTypes = [BaseItemKind.Movie],
@@ -271,7 +277,8 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                         Recursive = true
                     });
                     item = movies.FirstOrDefault(m =>
-                        m.ProviderIds.TryGetValue("Tmdb", out var id) && id == tmdbIdStr);
+                        m.ProviderIds.TryGetValue("Imdb", out var id) &&
+                        string.Equals(id, radarrMovie.ImdbId, StringComparison.OrdinalIgnoreCase));
                 }
             }
             else if (itemType == "episode")

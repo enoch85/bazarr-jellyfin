@@ -30,8 +30,8 @@ public class BazarrService : IBazarrService
     private readonly ILogger<BazarrService> _logger;
     private readonly IBazarrConfigProvider _configProvider;
 
-    // Track in-flight search requests to avoid duplicate Bazarr API calls
-    private readonly ConcurrentDictionary<string, Task<IReadOnlyList<SubtitleOption>>> _inFlightSearches = new();
+    // Track in-flight search requests to avoid duplicate Bazarr API calls, keyed by search cache key
+    private readonly ConcurrentDictionary<string, Lazy<Task<IReadOnlyList<SubtitleOption>>>> _inFlightSearches = new();
 
     /// <summary>
     /// Initializes a new instance of the <see cref="BazarrService"/> class.
@@ -117,24 +117,6 @@ public class BazarrService : IBazarrService
         _logger.LogInformation("Cached {Count} episodes for series {SeriesId}", episodes.Count, sonarrSeriesId);
 
         return episodes;
-    }
-
-    /// <inheritdoc />
-    public async Task<int?> FindRadarrIdByTmdbAsync(int tmdbId, CancellationToken cancellationToken = default)
-    {
-        var movies = await GetMoviesAsync(cancellationToken).ConfigureAwait(false);
-        var movie = movies.FirstOrDefault(m => m.TmdbId == tmdbId);
-
-        if (movie != null)
-        {
-            _logger.LogDebug("Found Radarr ID {RadarrId} for TMDB ID {TmdbId}", movie.RadarrId, tmdbId);
-        }
-        else
-        {
-            _logger.LogDebug("No movie found in Bazarr for TMDB ID {TmdbId}", tmdbId);
-        }
-
-        return movie?.RadarrId;
     }
 
     /// <inheritdoc />
@@ -334,82 +316,14 @@ public class BazarrService : IBazarrService
     }
 
     /// <inheritdoc />
-    public async Task<SubtitleSearchResult> SearchMovieSubtitlesAsync(int radarrId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
-    {
-        var cacheKey = $"{MovieSearchCacheKeyPrefix}{radarrId}";
-
-        // Check if we have cached results
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<SubtitleOption>? cached) && cached != null)
-        {
-            _logger.LogInformation("Returning cached subtitle search results for movie {RadarrId} ({Count} subtitles)", radarrId, cached.Count);
-            return new SubtitleSearchResult { Subtitles = cached, FromCache = true };
-        }
-
-        // Use GetOrAdd to atomically check if there's an in-flight search or create a new one
-        var searchKey = $"movie_{radarrId}";
-        var isNewSearch = false;
-
-        var searchTask = _inFlightSearches.GetOrAdd(searchKey, _ =>
-        {
-            isNewSearch = true;
-            // Use CancellationToken.None so the search continues even if the HTTP request is cancelled
-            return SearchMovieSubtitlesInternalAsync(radarrId, language, CancellationToken.None);
-        });
-
-        if (!isNewSearch)
-        {
-            _logger.LogInformation("Reusing in-flight search for movie {RadarrId}", radarrId);
-        }
-
-        try
-        {
-            // If timeout is enabled and this is a new search, use Task.WhenAny to return early
-            if (timeoutSeconds > 0 && isNewSearch)
-            {
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken);
-                var completedTask = await Task.WhenAny(searchTask, timeoutTask).ConfigureAwait(false);
-
-                if (completedTask == timeoutTask)
-                {
-                    // Timeout reached - return placeholder, search continues in background
-                    _logger.LogInformation(
-                        "Search timeout ({Timeout}s) reached for movie {RadarrId}. Search continues in background.",
-                        timeoutSeconds,
-                        radarrId);
-
-                    // Continue search in background
-                    _ = ContinueSearchInBackgroundAsync(searchTask, cacheKey, searchKey, $"movie {radarrId}");
-
-                    return new SubtitleSearchResult
-                    {
-                        Subtitles = [],
-                        SearchInProgress = true
-                    };
-                }
-            }
-
-            var result = await searchTask.ConfigureAwait(false);
-
-            // Only cache if this was our search (avoid double-caching)
-            if (isNewSearch)
-            {
-                _cache.Set(cacheKey, result, SearchResultCacheDuration);
-                _inFlightSearches.TryRemove(searchKey, out _);
-            }
-
-            return new SubtitleSearchResult { Subtitles = result };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error searching subtitles for movie {RadarrId}", radarrId);
-            if (isNewSearch)
-            {
-                _inFlightSearches.TryRemove(searchKey, out _);
-            }
-
-            throw;
-        }
-    }
+    public Task<SubtitleSearchResult> SearchMovieSubtitlesAsync(int radarrId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
+        => SearchAsync(
+            $"{MovieSearchCacheKeyPrefix}{radarrId}",
+            $"movie {radarrId}",
+            // CancellationToken.None so the search survives the Jellyfin request being cancelled
+            () => SearchMovieSubtitlesInternalAsync(radarrId, language, CancellationToken.None),
+            timeoutSeconds,
+            cancellationToken);
 
     private async Task<IReadOnlyList<SubtitleOption>> SearchMovieSubtitlesInternalAsync(int radarrId, string language, CancellationToken cancellationToken)
     {
@@ -430,82 +344,14 @@ public class BazarrService : IBazarrService
     }
 
     /// <inheritdoc />
-    public async Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, int sonarrSeriesId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
-    {
-        var cacheKey = $"{EpisodeSearchCacheKeyPrefix}{sonarrEpisodeId}";
-
-        // Check if we have cached results
-        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<SubtitleOption>? cached) && cached != null)
-        {
-            _logger.LogInformation("Returning cached subtitle search results for episode {EpisodeId} ({Count} subtitles)", sonarrEpisodeId, cached.Count);
-            return new SubtitleSearchResult { Subtitles = cached, FromCache = true };
-        }
-
-        // Use GetOrAdd to atomically check if there's an in-flight search or create a new one
-        var searchKey = $"episode_{sonarrEpisodeId}";
-        var isNewSearch = false;
-
-        var searchTask = _inFlightSearches.GetOrAdd(searchKey, _ =>
-        {
-            isNewSearch = true;
-            // Use CancellationToken.None so the search continues even if the HTTP request is cancelled
-            return SearchEpisodeSubtitlesInternalAsync(sonarrEpisodeId, language, CancellationToken.None);
-        });
-
-        if (!isNewSearch)
-        {
-            _logger.LogInformation("Reusing in-flight search for episode {EpisodeId}", sonarrEpisodeId);
-        }
-
-        try
-        {
-            // If timeout is enabled and this is a new search, use Task.WhenAny to return early
-            if (timeoutSeconds > 0 && isNewSearch)
-            {
-                var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken);
-                var completedTask = await Task.WhenAny(searchTask, timeoutTask).ConfigureAwait(false);
-
-                if (completedTask == timeoutTask)
-                {
-                    // Timeout reached - return placeholder, search continues in background
-                    _logger.LogInformation(
-                        "Search timeout ({Timeout}s) reached for episode {EpisodeId}. Search continues in background.",
-                        timeoutSeconds,
-                        sonarrEpisodeId);
-
-                    // Continue search in background
-                    _ = ContinueSearchInBackgroundAsync(searchTask, cacheKey, searchKey, $"episode {sonarrEpisodeId}");
-
-                    return new SubtitleSearchResult
-                    {
-                        Subtitles = [],
-                        SearchInProgress = true
-                    };
-                }
-            }
-
-            var result = await searchTask.ConfigureAwait(false);
-
-            // Only cache if this was our search (avoid double-caching)
-            if (isNewSearch)
-            {
-                _cache.Set(cacheKey, result, SearchResultCacheDuration);
-                _inFlightSearches.TryRemove(searchKey, out _);
-            }
-
-            return new SubtitleSearchResult { Subtitles = result };
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error searching subtitles for episode {EpisodeId}", sonarrEpisodeId);
-            if (isNewSearch)
-            {
-                _inFlightSearches.TryRemove(searchKey, out _);
-            }
-
-            throw;
-        }
-    }
+    public Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, int sonarrSeriesId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
+        => SearchAsync(
+            $"{EpisodeSearchCacheKeyPrefix}{sonarrEpisodeId}",
+            $"episode {sonarrEpisodeId}",
+            // CancellationToken.None so the search survives the Jellyfin request being cancelled
+            () => SearchEpisodeSubtitlesInternalAsync(sonarrEpisodeId, language, CancellationToken.None),
+            timeoutSeconds,
+            cancellationToken);
 
     private async Task<IReadOnlyList<SubtitleOption>> SearchEpisodeSubtitlesInternalAsync(int sonarrEpisodeId, string language, CancellationToken cancellationToken)
     {
@@ -526,31 +372,75 @@ public class BazarrService : IBazarrService
     }
 
     /// <summary>
-    /// Continues a search in the background after timeout, caching results when done.
+    /// Serves a subtitle search from cache, joins an identical in-flight search, or starts one.
+    /// Callers that hit <paramref name="timeoutSeconds"/> get an in-progress result while the
+    /// search keeps running - joining a search must never block longer than starting one.
     /// </summary>
-    private async Task ContinueSearchInBackgroundAsync(
-        Task<IReadOnlyList<SubtitleOption>> searchTask,
+    private async Task<SubtitleSearchResult> SearchAsync(
         string cacheKey,
-        string searchKey,
+        string itemDescription,
+        Func<Task<IReadOnlyList<SubtitleOption>>> search,
+        int timeoutSeconds,
+        CancellationToken cancellationToken)
+    {
+        if (_cache.TryGetValue(cacheKey, out IReadOnlyList<SubtitleOption>? cached) && cached != null)
+        {
+            _logger.LogInformation("Returning cached subtitle search results for {Item} ({Count} subtitles)", itemDescription, cached.Count);
+            return new SubtitleSearchResult { Subtitles = cached, FromCache = true };
+        }
+
+        // Lazy guarantees the Bazarr search starts exactly once even when callers race here.
+        var searchTask = _inFlightSearches.GetOrAdd(
+            cacheKey,
+            key => new Lazy<Task<IReadOnlyList<SubtitleOption>>>(() => RunSearchAsync(search, key, itemDescription))).Value;
+
+        if (timeoutSeconds > 0)
+        {
+            var timeoutTask = Task.Delay(TimeSpan.FromSeconds(timeoutSeconds), cancellationToken);
+            if (await Task.WhenAny(searchTask, timeoutTask).ConfigureAwait(false) != searchTask)
+            {
+                _logger.LogInformation(
+                    "Search timeout ({Timeout}s) reached for {Item}. Search continues in background.",
+                    timeoutSeconds,
+                    itemDescription);
+
+                return new SubtitleSearchResult { Subtitles = [], SearchInProgress = true };
+            }
+        }
+
+        return new SubtitleSearchResult { Subtitles = await searchTask.ConfigureAwait(false) };
+    }
+
+    /// <summary>
+    /// Owns a single in-flight search: caches the result and always releases the in-flight slot,
+    /// whether the caller is still waiting or has already timed out.
+    /// </summary>
+    private async Task<IReadOnlyList<SubtitleOption>> RunSearchAsync(
+        Func<Task<IReadOnlyList<SubtitleOption>>> search,
+        string cacheKey,
         string itemDescription)
     {
         try
         {
-            var result = await searchTask.ConfigureAwait(false);
+            var result = await search().ConfigureAwait(false);
             _cache.Set(cacheKey, result, SearchResultCacheDuration);
             _logger.LogInformation(
-                "Background search completed for {Item}. Found {Count} subtitles. Results cached for {Duration} minutes.",
+                "Search completed for {Item}. Found {Count} subtitles, cached for {Duration} minutes.",
                 itemDescription,
                 result.Count,
                 SearchResultCacheDuration.TotalMinutes);
+
+            return result;
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Background search failed for {Item}", itemDescription);
+            // Failures are deliberately not cached so the next search retries.
+            _logger.LogError(ex, "Search failed for {Item}", itemDescription);
+            throw;
         }
         finally
         {
-            _inFlightSearches.TryRemove(searchKey, out _);
+            _inFlightSearches.TryRemove(cacheKey, out _);
         }
     }
 
@@ -770,6 +660,7 @@ public class BazarrService : IBazarrService
     /// <param name="response">The HTTP response to validate.</param>
     /// <param name="endpoint">The endpoint that was called (for logging).</param>
     /// <exception cref="InvalidOperationException">Thrown when response is invalid (HTML, redirect, etc).</exception>
+    /// <exception cref="HttpRequestException">Thrown when Bazarr returns an error status, carrying its own message.</exception>
     private async Task ValidateResponseAsync(HttpResponseMessage response, string endpoint)
     {
         // Check for redirect responses (301, 302, etc.)
@@ -818,7 +709,24 @@ public class BazarrService : IBazarrService
                 endpoint);
         }
 
-        // Now check for HTTP errors
-        response.EnsureSuccessStatusCode();
+        // Now check for HTTP errors. Bazarr explains the failure in a JSON-encoded string body
+        // (e.g. "All providers are throttled"), so surface that instead of a bare status code.
+        if (!response.IsSuccessStatusCode)
+        {
+            var body = (await response.Content.ReadAsStringAsync().ConfigureAwait(false)).Trim().Trim('"');
+            var detail = body.Length switch
+            {
+                0 => response.ReasonPhrase,
+                > 200 => body[..200],
+                _ => body
+            };
+
+            _logger.LogError("Bazarr returned {StatusCode} for {Endpoint}: {Detail}", (int)response.StatusCode, endpoint, detail);
+
+            throw new HttpRequestException(
+                $"Bazarr returned {(int)response.StatusCode} for {endpoint}: {detail}",
+                null,
+                response.StatusCode);
+        }
     }
 }

@@ -23,6 +23,11 @@ public class MockHttpMessageHandler : HttpMessageHandler
     public HttpRequestMessage? LastRequest => _requests.Count > 0 ? _requests[^1] : null;
 
     /// <summary>
+    /// Optional delay before each response, to simulate Bazarr's slow provider searches.
+    /// </summary>
+    public TimeSpan ResponseDelay { get; set; }
+
+    /// <summary>
     /// Adds a response for a specific endpoint path.
     /// </summary>
     public void AddResponse(string path, HttpStatusCode statusCode, string content, string contentType = "application/json")
@@ -58,12 +63,18 @@ public class MockHttpMessageHandler : HttpMessageHandler
         _responses.Enqueue(new ExceptionResponse(exception));
     }
 
+
     /// <inheritdoc />
-    protected override Task<HttpResponseMessage> SendAsync(
+    protected override async Task<HttpResponseMessage> SendAsync(
         HttpRequestMessage request,
         CancellationToken cancellationToken)
     {
         _requests.Add(request);
+
+        if (ResponseDelay > TimeSpan.Zero)
+        {
+            await Task.Delay(ResponseDelay, cancellationToken);
+        }
 
         // Check if we have a response for this specific endpoint
         var path = request.RequestUri?.PathAndQuery ?? string.Empty;
@@ -87,7 +98,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
                 response.Content.Headers.ContentType = System.Net.Http.Headers.MediaTypeHeaderValue.Parse(contentTypeValue);
             }
 
-            return Task.FromResult(response);
+            return response;
         }
 
         // Fall back to queued responses
@@ -104,7 +115,7 @@ public class MockHttpMessageHandler : HttpMessageHandler
             throw exResponse.Exception;
         }
 
-        return Task.FromResult(queuedResponse);
+        return queuedResponse;
     }
 
     private class ExceptionResponse : HttpResponseMessage

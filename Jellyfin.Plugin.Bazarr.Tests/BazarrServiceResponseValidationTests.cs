@@ -192,7 +192,7 @@ public class BazarrServiceResponseValidationTests
         // Arrange
         var jsonContent = @"{
             ""data"": [
-                {""title"": ""Test Movie"", ""radarrId"": 1, ""tmdbId"": 12345}
+                {""title"": ""Test Movie"", ""radarrId"": 1, ""imdbId"": ""tt0000001""}
             ]
         }";
 

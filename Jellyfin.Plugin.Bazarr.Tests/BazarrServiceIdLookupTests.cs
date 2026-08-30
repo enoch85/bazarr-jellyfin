@@ -41,82 +41,10 @@ public class BazarrServiceIdLookupTests : IDisposable
         GC.SuppressFinalize(this);
     }
 
-    #region FindRadarrIdByTmdbAsync Tests
-
-    /// <summary>
-    /// CRITICAL: Verify we find the correct movie by TMDB ID.
-    /// If this fails, subtitles could be downloaded for the wrong movie.
-    /// </summary>
-    [Fact]
-    public async Task FindRadarrIdByTmdbAsync_WhenMovieExists_ReturnsCorrectRadarrId()
-    {
-        // Arrange - Bazarr returns 3 movies, we want movie with TMDB ID 550 (Fight Club)
-        var moviesJson = """
-        {
-            "data": [
-                { "radarrId": 1, "title": "The Matrix", "tmdbId": 603 },
-                { "radarrId": 2, "title": "Fight Club", "tmdbId": 550 },
-                { "radarrId": 3, "title": "Inception", "tmdbId": 27205 }
-            ]
-        }
-        """;
-        _mockHandler.QueueResponse(HttpStatusCode.OK, moviesJson);
-
-        // Act
-        var result = await _service.FindRadarrIdByTmdbAsync(550);
-
-        // Assert - Must return radarrId 2 for Fight Club, not any other movie
-        Assert.Equal(2, result);
-    }
-
-    /// <summary>
-    /// Verify we don't accidentally return a movie when TMDB ID doesn't match.
-    /// A bug here could cause subtitles for a random movie.
-    /// </summary>
-    [Fact]
-    public async Task FindRadarrIdByTmdbAsync_WhenMovieDoesNotExist_ReturnsNull()
-    {
-        // Arrange - Bazarr has movies, but not the one we're looking for
-        var moviesJson = """
-        {
-            "data": [
-                { "radarrId": 1, "title": "The Matrix", "tmdbId": 603 },
-                { "radarrId": 2, "title": "Inception", "tmdbId": 27205 }
-            ]
-        }
-        """;
-        _mockHandler.QueueResponse(HttpStatusCode.OK, moviesJson);
-
-        // Act - Look for TMDB ID 550 which doesn't exist
-        var result = await _service.FindRadarrIdByTmdbAsync(550);
-
-        // Assert - Must be null, not some other movie
-        Assert.Null(result);
-    }
-
-    /// <summary>
-    /// Edge case: What if Bazarr has no movies at all?
-    /// </summary>
-    [Fact]
-    public async Task FindRadarrIdByTmdbAsync_WhenNoMoviesExist_ReturnsNull()
-    {
-        // Arrange - Empty list from Bazarr
-        var moviesJson = """{ "data": [] }""";
-        _mockHandler.QueueResponse(HttpStatusCode.OK, moviesJson);
-
-        // Act
-        var result = await _service.FindRadarrIdByTmdbAsync(550);
-
-        // Assert
-        Assert.Null(result);
-    }
-
-    #endregion
-
     #region FindRadarrIdByImdbAsync Tests
 
     /// <summary>
-    /// CRITICAL: IMDB lookup is the fallback when TMDB fails.
+    /// CRITICAL: IMDB is the only movie key Bazarr exposes.
     /// Verify case-insensitive matching (IMDB IDs could be "tt0137523" or "TT0137523").
     /// </summary>
     [Fact]

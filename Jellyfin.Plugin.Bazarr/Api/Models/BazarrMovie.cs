@@ -20,12 +20,6 @@ public class BazarrMovie
     public string Title { get; set; } = string.Empty;
 
     /// <summary>
-    /// Gets or sets the TMDB ID.
-    /// </summary>
-    [JsonPropertyName("tmdbId")]
-    public int? TmdbId { get; set; }
-
-    /// <summary>
     /// Gets or sets the IMDB ID.
     /// </summary>
     [JsonPropertyName("imdbId")]

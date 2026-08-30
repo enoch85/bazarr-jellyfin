@@ -50,7 +50,7 @@ public class BazarrController : ControllerBase
     /// <param name="language">The language code (default: en).</param>
     /// <response code="200">Subtitles found.</response>
     /// <response code="404">Item not found or not in Bazarr.</response>
-    /// <returns>List of available subtitles.</returns>
+    /// <returns>A <see cref="SubtitleSearchResult"/> for both movies and episodes.</returns>
     [HttpGet("Search/{itemId}")]
     [ProducesResponseType(StatusCodes.Status200OK)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
@@ -74,8 +74,7 @@ public class BazarrController : ControllerBase
             }
 
             _logger.LogInformation("Searching subtitles for movie {Title} (radarrId: {RadarrId})", movie.Name, radarrId);
-            var subtitles = await _bazarrService.SearchMovieSubtitlesAsync(radarrId.Value, language).ConfigureAwait(false);
-            return Ok(subtitles);
+            return Ok(await _bazarrService.SearchMovieSubtitlesAsync(radarrId.Value, language).ConfigureAwait(false));
         }
 
         // Handle Episode
@@ -105,8 +104,7 @@ public class BazarrController : ControllerBase
                 return NotFound("Could not find series for episode");
             }
 
-            var subtitles = await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, seriesId, language).ConfigureAwait(false);
-            return Ok(subtitles.Subtitles);
+            return Ok(await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, seriesId, language).ConfigureAwait(false));
         }
 
         return BadRequest("Item must be a movie or episode");
@@ -209,17 +207,7 @@ public class BazarrController : ControllerBase
 
     private async Task<int?> ResolveRadarrIdAsync(Movie movie)
     {
-        // Try TMDB first - use ProviderIds dictionary directly
-        if (movie.ProviderIds.TryGetValue("Tmdb", out var tmdbIdStr) && int.TryParse(tmdbIdStr, out var tmdbId))
-        {
-            var radarrId = await _bazarrService.FindRadarrIdByTmdbAsync(tmdbId).ConfigureAwait(false);
-            if (radarrId != null)
-            {
-                return radarrId;
-            }
-        }
-
-        // Fallback to IMDB
+        // Bazarr's /api/movies response only exposes imdbId - there is no TMDB ID to match on
         if (movie.ProviderIds.TryGetValue("Imdb", out var imdbId) && !string.IsNullOrEmpty(imdbId))
         {
             return await _bazarrService.FindRadarrIdByImdbAsync(imdbId).ConfigureAwait(false);
