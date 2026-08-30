@@ -49,7 +49,7 @@ public class BazarrServiceCachingTests : IDisposable
     public async Task GetMoviesAsync_SecondCall_UsesCacheNotHttp()
     {
         // Arrange - Only one response queued
-        var moviesJson = """{ "data": [{ "radarrId": 1, "title": "Test", "tmdbId": 123 }] }""";
+        var moviesJson = """{ "data": [{ "radarrId": 1, "title": "Test", "imdbId": "tt0000001" }] }""";
         _mockHandler.QueueResponse(HttpStatusCode.OK, moviesJson);
 
         // Act - Call twice
@@ -123,5 +123,27 @@ public class BazarrServiceCachingTests : IDisposable
         Assert.Equal(2, _mockHandler.CapturedRequests.Count);
         Assert.Equal(1, result1[0].SonarrEpisodeId);
         Assert.Equal(100, result2[0].SonarrEpisodeId);
+    }
+
+    /// <summary>
+    /// CRITICAL: A caller joining an in-flight search must still honour its timeout, and must
+    /// not start a second Bazarr search. Without this, the second viewer's request hangs until
+    /// Bazarr finishes - up to the 20 minute HttpClient timeout.
+    /// </summary>
+    [Fact]
+    public async Task SearchMovieSubtitlesAsync_JoiningInFlightSearch_HonoursTimeoutAndReusesSearch()
+    {
+        // Arrange - a Bazarr search far slower than the caller's timeout
+        _mockHandler.ResponseDelay = TimeSpan.FromSeconds(5);
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [] }""");
+
+        // Act - two concurrent searches for the same movie, both with a 1s timeout
+        var results = await Task.WhenAll(
+            _service.SearchMovieSubtitlesAsync(1, "en", 1),
+            _service.SearchMovieSubtitlesAsync(1, "en", 1));
+
+        // Assert - both returned early, and only one search hit Bazarr
+        Assert.All(results, r => Assert.True(r.SearchInProgress));
+        Assert.Single(_mockHandler.CapturedRequests);
     }
 }

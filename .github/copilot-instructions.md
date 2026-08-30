@@ -29,6 +29,12 @@ git tag -a v1.1.5 -m "Description of changes" && git push origin v1.1.5
 - `manifest.json` - Jellyfin plugin manifest (auto-updated by release workflow)
 - `.github/workflows/release.yaml` - Release automation
 
+## Commits and Pull Requests
+
+- **No AI attribution.** Never add `Co-Authored-By: Claude`, "Generated with Claude Code",
+  or any similar trailer, footer or badge to a commit message, PR title, PR body or issue
+  comment. Commits are authored by the repository owner.
+
 ## API Notes
 
 - Bazarr API uses array notation for some parameters (e.g., `seriesid[]` not `seriesid`)
@@ -78,7 +84,26 @@ The episode lookup process uses fallback logic due to an ID mismatch between Jel
 
 **Bazarr API structure:**
 - `/api/series` returns `tvdbId`, `imdbId`, `sonarrSeriesId` (series-level only)
-- `/api/episodes?seriesid[]={sonarrSeriesId}` returns `sonarrEpisodeId`, `season`, `episode` (NO tvdbId)
+- `/api/episodes?seriesid[]={sonarrSeriesId}` returns `sonarrEpisodeId`, `sonarrSeriesId`, `season`, `episode` (NO tvdbId)
 - `/api/providers/episodes?episodeid={sonarrEpisodeId}` searches for subtitles
 
+### Movies Match on IMDB Only (BY DESIGN)
 
+Bazarr's `/api/movies` marshals a model that has **no `tmdbId` field** - see `movies_data_model`
+in `bazarr/api/movies/movies.py`; `flask_restx.marshal` drops anything not declared there.
+Matching a Jellyfin movie to Bazarr therefore only works through `imdbId`, in the search
+handler, the controller and the post-download library refresh.
+
+**DO NOT re-add TMDB matching** - it silently never matches, which is what made the
+post-download refresh a no-op for every movie.
+
+### Status Rows in Search Results (BY DESIGN)
+
+Jellyfin's `SubtitleManager.SearchSubtitles` catches every exception a provider throws and
+returns an empty list, so a failed search is indistinguishable from "no subtitles found".
+
+When a search cannot return results, the plugin therefore returns a single non-downloadable
+row built by `SubtitlePlaceholder` (id prefixed `placeholder_`) carrying the reason in
+`Comment`. `GetSubtitles` rejects those ids. `ValidateResponseAsync` feeds it Bazarr's own
+error text - Bazarr answers failures with a JSON-encoded string body such as
+`"All providers are throttled"` (see `bazarr/api/providers/providers_movies.py`).

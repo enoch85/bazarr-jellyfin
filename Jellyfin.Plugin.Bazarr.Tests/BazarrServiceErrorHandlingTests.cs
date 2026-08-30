@@ -115,6 +115,24 @@ public class BazarrServiceErrorHandlingTests : IDisposable
     }
 
     /// <summary>
+    /// Bazarr answers a throttled manual search with 500 and a JSON-encoded string body.
+    /// That message must reach the caller instead of a bare status code (issue #9).
+    /// </summary>
+    [Fact]
+    public async Task SearchMovieSubtitlesAsync_WhenProvidersThrottled_ThrowsWithBazarrMessage()
+    {
+        // Arrange
+        _mockHandler.QueueResponse(HttpStatusCode.InternalServerError, "\"All providers are throttled\"\n");
+
+        // Act & Assert
+        var exception = await Assert.ThrowsAsync<HttpRequestException>(
+            () => _service.SearchMovieSubtitlesAsync(1, "en"));
+
+        Assert.Equal(HttpStatusCode.InternalServerError, exception.StatusCode);
+        Assert.Contains("All providers are throttled", exception.Message, StringComparison.Ordinal);
+    }
+
+    /// <summary>
     /// When Bazarr returns empty data array, should return empty list not crash.
     /// </summary>
     [Fact]

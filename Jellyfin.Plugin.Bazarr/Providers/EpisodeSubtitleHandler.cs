@@ -208,16 +208,7 @@ public class EpisodeSubtitleHandler
         if (searchResult.SearchInProgress)
         {
             _logger.LogInformation("Episode search in progress - returning placeholder to user");
-            return new[]
-            {
-                new RemoteSubtitleInfo
-                {
-                    Id = "search_in_progress",
-                    Name = "Search in progress - results typically ready in 5-15 minutes",
-                    ProviderName = "Bazarr",
-                    Comment = "Bazarr is searching multiple providers in the background. Click 'Search' again later to see cached results."
-                }
-            };
+            return SubtitlePlaceholder.SearchInProgress();
         }
 
         var subtitles = searchResult.Subtitles;

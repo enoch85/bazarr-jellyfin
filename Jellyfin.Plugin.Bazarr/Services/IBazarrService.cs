@@ -33,15 +33,8 @@ public interface IBazarrService
     Task<IReadOnlyList<BazarrEpisode>> GetEpisodesAsync(int sonarrSeriesId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Finds the Radarr ID by TMDB ID.
-    /// </summary>
-    /// <param name="tmdbId">The TMDB ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The Radarr ID if found, null otherwise.</returns>
-    Task<int?> FindRadarrIdByTmdbAsync(int tmdbId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Finds the Radarr ID by IMDB ID.
+    /// Bazarr's /api/movies response carries no TMDB ID, so IMDB is the only usable key.
     /// </summary>
     /// <param name="imdbId">The IMDB ID.</param>
     /// <param name="cancellationToken">Cancellation token.</param>

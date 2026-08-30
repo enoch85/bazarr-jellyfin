@@ -48,23 +48,17 @@ public class MovieSubtitleHandler
         int timeoutSeconds,
         CancellationToken cancellationToken)
     {
-        // Try to find the movie in Bazarr by TMDB ID
+        // Bazarr's /api/movies response only exposes imdbId - there is no TMDB ID to match on
         int? radarrId = null;
 
-        if (providerIds.TryGetValue("Tmdb", out var tmdbIdStr) &&
-            int.TryParse(tmdbIdStr, out var tmdbId))
-        {
-            radarrId = await _bazarrService.FindRadarrIdByTmdbAsync(tmdbId, cancellationToken).ConfigureAwait(false);
-        }
-
-        if (radarrId == null && providerIds.TryGetValue("Imdb", out var imdbId))
+        if (providerIds.TryGetValue("Imdb", out var imdbId) && !string.IsNullOrEmpty(imdbId))
         {
             radarrId = await _bazarrService.FindRadarrIdByImdbAsync(imdbId, cancellationToken).ConfigureAwait(false);
         }
 
         if (radarrId == null)
         {
-            _logger.LogWarning("Movie not found in Bazarr: {Name}", name);
+            _logger.LogWarning("Movie not found in Bazarr (needs an IMDB ID in Jellyfin and Radarr): {Name}", name);
             return Enumerable.Empty<RemoteSubtitleInfo>();
         }
 
@@ -76,16 +70,7 @@ public class MovieSubtitleHandler
         if (searchResult.SearchInProgress)
         {
             _logger.LogInformation("Movie search in progress - returning placeholder to user");
-            return new[]
-            {
-                new RemoteSubtitleInfo
-                {
-                    Id = "search_in_progress",
-                    Name = "Search in progress - results typically ready in 5-15 minutes",
-                    ProviderName = "Bazarr",
-                    Comment = "Bazarr is searching multiple providers in the background. Click 'Search' again later to see cached results."
-                }
-            };
+            return SubtitlePlaceholder.SearchInProgress();
         }
 
         var subtitles = searchResult.Subtitles;

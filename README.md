@@ -141,8 +141,11 @@ dotnet build
 ### Testing
 
 ```bash
-dotnet test
+dotnet test                 # unit tests
+dev-env/e2e/run-e2e.sh      # Playwright tests against a real Jellyfin server
 ```
+
+See [dev-env/e2e/README.md](dev-env/e2e/README.md) for what the end-to-end suite provisions.
 
 ### Release Process
 
@@ -211,6 +214,10 @@ Don't worry - this is safe:
 ### Subtitle search shows "Search in progress"
 
 This is normal - Bazarr is querying multiple providers which takes time. Wait 5-15 minutes and click Search again to see cached results.
+
+### Subtitle search shows "Search failed"
+
+The row's comment carries Bazarr's own message. The most common one is `All providers are throttled`: a provider hit its rate or download limit - often right after a download - so Bazarr benched it for 1-3 hours. Check **Bazarr → System → Providers** for the retry time, or enable more providers.
 
 ### Downloaded subtitle doesn't appear
 
