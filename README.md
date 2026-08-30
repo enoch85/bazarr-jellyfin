@@ -66,7 +66,7 @@ flowchart TB
 
 ```mermaid
 flowchart TB
-    A[User clicks Search] --> B[Plugin receives TMDB/TVDB ID]
+    A[User clicks Search] --> B[Plugin receives IMDB/TVDB ID]
     B --> C[Lookup Bazarr ID]
     C --> D[Search subtitles]
     D --> E{Results within 25s?}
@@ -227,7 +227,7 @@ The plugin triggers a library refresh after download. If it still doesn't appear
 
 ### Movie/Episode not found in Bazarr
 
-Ensure the item exists in Radarr/Sonarr and Bazarr has synced. The plugin matches by TMDB ID (movies) or TVDB ID (episodes).
+Ensure the item exists in Radarr/Sonarr and Bazarr has synced. The plugin matches movies by IMDB ID, and episodes by series TVDB/IMDB ID or title.
 
 ### Connection test fails with HTML/redirect errors
 
