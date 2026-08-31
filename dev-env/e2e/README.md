@@ -32,12 +32,19 @@ To run against a real Bazarr instead, set `BAZARR_URL` before provisioning.
 
 ## Requirements
 
-`dotnet`, `curl`, `perl`, `ffmpeg`, and Chromium's shared libraries:
+`dotnet`, `curl` and `perl` must already be present. `ffmpeg` and the shared libraries
+Playwright's Chromium needs are installed by `provision.sh` itself when they are missing and
+`apt-get` is available - it uses `sudo` if it is not already running as root. Set `SKIP_DEPS=1`
+to manage them yourself, which is what you want on a non-Debian machine:
 
 ```bash
 apt-get install -y ffmpeg libnss3 libnspr4 libatk1.0-0 libatk-bridge2.0-0 libatspi2.0-0 \
     libcups2 libxcomposite1 libxdamage1 libxkbcommon0 libpango-1.0-0 libcairo2
 ```
+
+Inside a sandboxed container apt often cannot drop privileges to its `_apt` user, so a plain
+install fails with `Failed to setgroups`. `provision.sh` retries such a failure with apt's own
+sandbox disabled and the download cache redirected somewhere writable.
 
 Failures write `failure.png`, `failure.html` and `failure.log` (browser console, page errors
 and any HTTP 4xx/5xx) next to the test binary.

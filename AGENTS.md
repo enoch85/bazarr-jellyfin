@@ -1,4 +1,4 @@
-# Copilot Instructions for bazarr-jellyfin
+# Agent Instructions for bazarr-jellyfin
 
 ## Project Overview
 

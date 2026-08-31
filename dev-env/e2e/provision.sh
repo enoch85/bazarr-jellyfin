@@ -13,6 +13,65 @@ REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 log() { echo "[provision] $*"; }
 api() { curl -sS --max-time 60 -H "Authorization: MediaBrowser Token=\"$TOKEN\"" "$@"; }
 
+# --- 0. Dependencies ---------------------------------------------------------------
+# ffmpeg builds the test media and is what Jellyfin transcodes with; the rest are the
+# shared libraries Playwright's Chromium needs in order to launch. A missing Chromium
+# library is the nastier of the two failures - it surfaces as an opaque browser launch
+# error midway through the test run, long after provisioning reported success. Set
+# SKIP_DEPS=1 to manage these yourself.
+#
+# Each entry is package=a soname it provides, or "-" to look for a binary instead.
+DEPS=(ffmpeg=- libnss3=libnss3.so libnspr4=libnspr4.so libatk1.0-0=libatk-1.0.so
+      libatk-bridge2.0-0=libatk-bridge-2.0.so libatspi2.0-0=libatspi.so
+      libcups2=libcups.so libxcomposite1=libXcomposite.so libxdamage1=libXdamage.so
+      libxkbcommon0=libxkbcommon.so libpango-1.0-0=libpango-1.0.so libcairo2=libcairo.so)
+
+missing=()
+for dep in "${DEPS[@]}"; do
+    pkg="${dep%%=*}" soname="${dep#*=}"
+    if [ "$soname" = "-" ]; then
+        command -v "$pkg" >/dev/null || missing+=("$pkg")
+    elif ! PATH="/sbin:/usr/sbin:$PATH" ldconfig -p 2>/dev/null | grep -qF "$soname"; then
+        missing+=("$pkg")
+    fi
+done
+
+if [ "${#missing[@]}" -gt 0 ] && [ "${SKIP_DEPS:-0}" = "1" ]; then
+    log "SKIP_DEPS=1, not installing - but these look missing: ${missing[*]}"
+elif [ "${#missing[@]}" -gt 0 ]; then
+    log "installing missing dependencies: ${missing[*]}"
+    command -v apt-get >/dev/null \
+        || { log "no apt-get here, install these yourself: ${missing[*]}"; exit 1; }
+    SUDO=""
+    if [ "$(id -u)" != 0 ]; then
+        command -v sudo >/dev/null \
+            || { log "need root to install: ${missing[*]}"; exit 1; }
+        SUDO=sudo
+    fi
+    apt_get() { $SUDO apt-get -y -qq "$@"; }
+
+    # A sandboxed container cannot drop privileges to the _apt user ("Failed to
+    # setgroups") and cannot write /var/cache/apt/archives/partial, which _apt owns and
+    # which we may hold no CAP_CHOWN to fix. The plain install runs first so a normal
+    # machine keeps apt's own hardening; only the retry turns that sandbox off and
+    # redirects the download cache somewhere writable.
+    apt_get update || true
+    if ! apt_get install --no-install-recommends "${missing[@]}"; then
+        log "apt failed, retrying without apt's privilege-drop sandbox"
+        APT_CACHE="${TMPDIR:-/tmp}/jf-e2e-apt"
+        mkdir -p "$APT_CACHE/partial"
+        APT_OPTS=(-o APT::Sandbox::User=root -o Acquire::ForceIPv4=true
+                  -o Dir::Cache::archives="$APT_CACHE")
+        apt_get update "${APT_OPTS[@]}" || true
+        apt_get install --no-install-recommends "${missing[@]}" "${APT_OPTS[@]}"
+    fi
+    # A first pass that fetched everything but tripped over postinst ordering leaves
+    # packages unpacked-but-unconfigured (dpkg state "iU"); this finishes them.
+    $SUDO dpkg --configure -a
+fi
+
+command -v ffmpeg >/dev/null || { log "ffmpeg is required (apt-get install ffmpeg)"; exit 1; }
+
 # --- 1. Jellyfin server + web UI -------------------------------------------------
 if [ ! -x "$JF_ROOT/jellyfin/jellyfin" ]; then
     log "downloading Jellyfin $JF_VERSION"
@@ -22,8 +81,6 @@ if [ ! -x "$JF_ROOT/jellyfin/jellyfin" ]; then
     tar xzf "$JF_ROOT/jellyfin.tar.gz" -C "$JF_ROOT"
     rm -f "$JF_ROOT/jellyfin.tar.gz"
 fi
-
-command -v ffmpeg >/dev/null || { log "ffmpeg is required (apt-get install ffmpeg)"; exit 1; }
 
 # --- 2. Media ---------------------------------------------------------------------
 # The IMDB ID in the folder name is what Bazarr matches on - Bazarr's /api/movies
