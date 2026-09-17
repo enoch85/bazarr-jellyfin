@@ -13,7 +13,7 @@
         "changelog": "See release notes on GitHub",
         "targetAbi": "12.0.0.0",
         "sourceUrl": "https://github.com/enoch85/bazarr-jellyfin/releases/download/v2.0.0/Jellyfin.Plugin.Bazarr.zip",
-        "checksum": "facb72fe261d773d3d1f330b33797b65",
+        "checksum": "84fb615b6c39ae026e5520ea0fc7cf1a",
         "timestamp": "2026-09-17T20:47:25Z"
       },
       {
