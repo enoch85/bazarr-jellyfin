@@ -8,7 +8,7 @@ Jellyfin server with the plugin installed.
 SKIP_PROVISION=1 ./run-e2e.sh   # re-run against an already provisioned server
 ```
 
-`provision.sh` downloads Jellyfin (10.11.11 by default, into `/opt/jf`), builds and installs
+`provision.sh` downloads Jellyfin (12.1 by default, into `/opt/jf`), builds and installs
 the plugin, resets the server's data directory, runs the startup wizard, seeds two movies and
 points the plugin at Bazarr. `run-e2e.sh` then installs the Chromium build Playwright ships
 with and runs the tests.

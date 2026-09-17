@@ -26,7 +26,7 @@ jobs:
       - name: Setup .NET
         uses: actions/setup-dotnet@v4
         with:
-          dotnet-version: '9.0.x'
+          dotnet-version: '10.0.x'
 
       - name: Get version from tag
         id: version
@@ -91,7 +91,7 @@ jobs:
           # Prepend new version to versions array (keeps version history for updates)
           jq --arg ver "$VERSION" \
              --arg log "See release notes on GitHub" \
-             --arg abi "10.11.0.0" \
+             --arg abi "12.0.0.0" \
              --arg url "https://github.com/enoch85/bazarr-jellyfin/releases/download/$TAG/Jellyfin.Plugin.Bazarr.zip" \
              --arg sum "$CHECKSUM" \
              --arg ts "$TIMESTAMP" \

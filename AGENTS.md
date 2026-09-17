@@ -6,7 +6,7 @@ This is a Jellyfin plugin that integrates with Bazarr for subtitle management. I
 
 ## Tech Stack
 
-- .NET 9.0
+- .NET 10.0
 - Jellyfin Plugin SDK
 - xUnit for testing
 

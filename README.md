@@ -127,8 +127,8 @@ Click **Test Connection** to verify your settings.
 
 ### Prerequisites
 
-- .NET 9.0 SDK
-- Jellyfin Server 10.10+ for testing
+- .NET 10.0 SDK
+- Jellyfin Server 12.0+ for testing
 
 ### Building
 

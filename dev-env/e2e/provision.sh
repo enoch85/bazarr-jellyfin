@@ -5,7 +5,7 @@ set -euo pipefail
 
 JF_ROOT="${JF_ROOT:-/opt/jf}"
 JF_URL="${JF_URL:-http://127.0.0.1:8096}"
-JF_VERSION="${JF_VERSION:-10.11.11}"
+JF_VERSION="${JF_VERSION:-12.1}"
 JF_USER=dev
 JF_PASS=dev123
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
@@ -73,13 +73,15 @@ fi
 command -v ffmpeg >/dev/null || { log "ffmpeg is required (apt-get install ffmpeg)"; exit 1; }
 
 # --- 1. Jellyfin server + web UI -------------------------------------------------
-if [ ! -x "$JF_ROOT/jellyfin/jellyfin" ]; then
+if [ ! -x "$JF_ROOT/jellyfin/jellyfin" ] || [ "$(cat "$JF_ROOT/jf-version" 2>/dev/null)" != "$JF_VERSION" ]; then
     log "downloading Jellyfin $JF_VERSION"
+    rm -rf "$JF_ROOT/jellyfin"
     mkdir -p "$JF_ROOT"
     curl -sSL -o "$JF_ROOT/jellyfin.tar.gz" \
         "https://repo.jellyfin.org/files/server/linux/latest-stable/amd64/jellyfin_${JF_VERSION}-amd64.tar.gz"
     tar xzf "$JF_ROOT/jellyfin.tar.gz" -C "$JF_ROOT"
     rm -f "$JF_ROOT/jellyfin.tar.gz"
+    echo "$JF_VERSION" > "$JF_ROOT/jf-version"
 fi
 
 # --- 2. Media ---------------------------------------------------------------------
