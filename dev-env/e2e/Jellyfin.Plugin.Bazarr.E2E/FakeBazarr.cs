@@ -44,7 +44,13 @@ public sealed class FakeBazarr : IDisposable
         ("/api/providers/movies", "radarrid=2") => (200, """
             {"data":[{"provider":"opensubtitlescom","subtitle":"pickled","language":"en","score":98,
               "release_info":["Inception.2010.1080p.BluRay.x264"],"matches":["hash"],
-              "original_format":"False","hearing_impaired":"False","forced":"False","uploader":"someone"}]}
+              "original_format":"False","hearing_impaired":"False","forced":"False","uploader":"someone"},
+             {"provider":"opensubtitlescom","subtitle":"pickled-hi","language":"en","score":90,
+              "release_info":["Inception.2010.720p.WEB.SDH"],"matches":[],
+              "original_format":"False","hearing_impaired":"True","forced":"False","uploader":"someone"},
+             {"provider":"opensubtitlescom","subtitle":"pickled-forced","language":"en","score":85,
+              "release_info":["Inception.2010.720p.WEB.FORCED"],"matches":[],
+              "original_format":"False","hearing_impaired":"False","forced":"True","uploader":"someone"}]}
             """),
         _ => (404, "\"unhandled\"\n")
     };

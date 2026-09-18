@@ -61,6 +61,26 @@ public class SubtitleSearchTests : IAsyncLifetime
         await Assertions.Expect(results).Not.ToContainTextAsync("Search failed");
     }
 
+    /// <summary>
+    /// Issue #15: Bazarr flags hearing-impaired and forced results, and the plugin already
+    /// sends those flags back on download, but the dialog gave no hint which row was which.
+    /// </summary>
+    [Fact]
+    public async Task HearingImpairedAndForced_AreBadgedOnTheirOwnRows()
+    {
+        var page = await SearchSubtitlesAsync(Env("JF_ITEM_OK"));
+
+        var regular = page.Locator(".subtitleResults .listItem", new() { HasText = "Inception.2010.1080p.BluRay.x264" });
+        var hi = page.Locator(".subtitleResults .listItem", new() { HasText = "Inception.2010.720p.WEB.SDH" });
+        var forced = page.Locator(".subtitleResults .listItem", new() { HasText = "Inception.2010.720p.WEB.FORCED" });
+
+        await Assertions.Expect(hi.Locator(".subtitleFeaturePillow")).ToHaveTextAsync("HI/SDH");
+        await Assertions.Expect(forced.Locator(".subtitleFeaturePillow")).ToHaveTextAsync("Forced/Foreign parts only");
+        await Assertions.Expect(regular.Locator(".subtitleFeaturePillow")).ToHaveTextAsync("Perfect match");
+
+        await page.ScreenshotAsync(new() { Path = "issue-15-hi-forced.png" });
+    }
+
     private static string Env(string name) =>
         Environment.GetEnvironmentVariable(name)
         ?? throw new InvalidOperationException($"{name} is not set - run dev-env/e2e/run-e2e.sh");

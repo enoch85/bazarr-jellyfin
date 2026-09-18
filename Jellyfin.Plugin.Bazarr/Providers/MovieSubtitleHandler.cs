@@ -104,7 +104,9 @@ public class MovieSubtitleHandler
             Format = SubtitleLanguageHelper.GetSubtitleFormat(s.OriginalFormat),
             ThreeLetterISOLanguageName = s.Language,
             Comment = SubtitleLanguageHelper.FormatSubtitleComment(s),
-            IsHashMatch = s.Matches?.Contains("hash") ?? false
+            IsHashMatch = s.Matches?.Contains("hash") ?? false,
+            HearingImpaired = s.HearingImpaired == "True",
+            Forced = s.Forced == "True"
         });
     }
 }
