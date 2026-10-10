@@ -98,6 +98,33 @@ make_movie() {
 log "creating test media"
 make_movie "The Matrix (1999) [imdbid-tt0133093]" "The.Matrix.1999.1080p.BluRay.x264.mkv"
 make_movie "Inception (2010) [imdbid-tt1375666]" "Inception.2010.1080p.BluRay.x264.mkv"
+make_movie "Memento (2000) [imdbid-tt0209144]" "Memento.2000.1080p.BluRay.x264.mkv"
+
+# One episode per scenario, for the same reason as the movies. Each series exercises one
+# step of the plugin's episode lookup chain against FakeBazarr's series list. $3 is an
+# optional episode NFO, $4 an optional tvshow.nfo - Jellyfin reads provider IDs and titles
+# from them because the metadata fetchers are off.
+make_episode() {
+    local show="$JF_ROOT/media/shows/$1" file="$2"
+    [ -f "$show/Season ${5:-01}/$file" ] && return 0
+    mkdir -p "$show/Season ${5:-01}"
+    cp "$JF_ROOT/media/sample.mkv" "$show/Season ${5:-01}/$file"
+    [ -z "${3:-}" ] || printf '%s\n' "$3" > "$show/Season ${5:-01}/${file%.mkv}.nfo"
+    [ -z "${4:-}" ] || printf '%s\n' "$4" > "$show/tvshow.nfo"
+}
+[ -f "$JF_ROOT/media/sample.mkv" ] || ffmpeg -y -loglevel error -f lavfi \
+    -i testsrc=size=320x180:rate=5:duration=2 -c:v libx264 -preset ultrafast "$JF_ROOT/media/sample.mkv"
+episode_nfo() { echo "<episodedetails><title>Pilot</title><season>1</season><episode>1</episode>$1</episodedetails>"; }
+make_episode "Alpha Show [tvdbid-1001]" "Alpha Show S01E01.mkv"
+make_episode "Bravo Show [tvdbid-1999] [imdbid-tt2000002]" "Bravo Show S01E01.mkv"
+make_episode "Charlie Show" "Charlie Show S01E01.mkv" "$(episode_nfo '<uniqueid type="tvdb">3003</uniqueid>')"
+make_episode "Delta Show" "Delta Show S01E01.mkv" "$(episode_nfo '<uniqueid type="imdb">tt4000004</uniqueid>')"
+make_episode "Echo Show" "Echo Show S01E01.mkv" "" \
+    '<tvshow><title>Echo Lokal</title><originaltitle>Echo Original</originaltitle></tvshow>'
+make_episode "Foxtrot Show" "Foxtrot Show S01E01.mkv"
+make_episode "Golf Show" "Golf Show S01E01.mkv"
+make_episode "Hotel Show [tvdbid-8008]" "Hotel Show S02E05.mkv" "" "" 02
+make_episode "Juliet Show" "Juliet Show S01E01.mkv"
 
 # --- 3. Plugin --------------------------------------------------------------------
 log "building plugin"
@@ -158,6 +185,11 @@ api -o /dev/null -X POST "$JF_URL/Library/VirtualFolders?name=Movies&collectionT
     -H 'Content-Type: application/json' \
     -d "{\"LibraryOptions\":{\"PathInfos\":[{\"Path\":\"$JF_ROOT/media/movies\"}],\"EnableInternetProviders\":false,\"MetadataCountryCode\":\"US\",\"PreferredMetadataLanguage\":\"en\",\"TypeOptions\":[{\"Type\":\"Movie\",\"MetadataFetchers\":[],\"ImageFetchers\":[]}]}}"
 
+log "adding show library"
+api -o /dev/null -X POST "$JF_URL/Library/VirtualFolders?name=Shows&collectionType=tvshows&refreshLibrary=true" \
+    -H 'Content-Type: application/json' \
+    -d "{\"LibraryOptions\":{\"PathInfos\":[{\"Path\":\"$JF_ROOT/media/shows\"}],\"EnableInternetProviders\":false,\"MetadataCountryCode\":\"US\",\"PreferredMetadataLanguage\":\"en\",\"TypeOptions\":[{\"Type\":\"Series\",\"MetadataFetchers\":[],\"ImageFetchers\":[]},{\"Type\":\"Episode\",\"MetadataFetchers\":[],\"ImageFetchers\":[]}]}}"
+
 api -o /dev/null -X POST "$JF_URL/Library/Refresh"
 # Jellyfin 10.11 ignores AnyProviderIdEquals on /Items, so match on the item name -
 # which is the folder name, IMDB tag included.
@@ -176,6 +208,13 @@ find_item() {
 }
 ITEM_THROTTLED=$(find_item tt0133093)
 ITEM_OK=$(find_item tt1375666)
+ITEM_DOWNLOAD=$(find_item tt0209144)
+
+# The episodes are looked up by the tests themselves; wait here until the scan has them all.
+for _ in $(seq 1 180); do
+    [ "$(api "$JF_URL/Items?IncludeItemTypes=Episode&Recursive=true" | grep -oE '"TotalRecordCount":[0-9]+' | cut -d: -f2)" = "9" ] && break
+    sleep 1
+done
 
 # --- 7. Plugin configuration ------------------------------------------------------
 log "configuring Bazarr plugin -> ${BAZARR_URL:-http://127.0.0.1:16767}"
@@ -190,6 +229,9 @@ JF_PASS=$JF_PASS
 JF_TOKEN=$TOKEN
 JF_ITEM_THROTTLED=$ITEM_THROTTLED
 JF_ITEM_OK=$ITEM_OK
+JF_ITEM_DOWNLOAD=$ITEM_DOWNLOAD
+JF_MEDIA=$JF_ROOT/media
+JF_LOG=$JF_ROOT/jellyfin.log
 EOF
 
 log "ready - settings written to $JF_ROOT/e2e.env"
