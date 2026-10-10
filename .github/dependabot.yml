@@ -1,0 +1,43 @@
+version: 2
+updates:
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    # Let fresh releases age before adopting them, so a hijacked or yanked
+    # release is caught upstream first. Security updates skip the cooldown.
+    cooldown:
+      default-days: 3
+    # One PR per week. Majors stay separate: they are not auto-merged.
+    groups:
+      github-actions:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    commit-message:
+      prefix: "ci"
+
+  - package-ecosystem: "nuget"
+    directories:
+      - "/"
+      - "/dev-env/e2e/Jellyfin.Plugin.Bazarr.E2E"
+    schedule:
+      interval: "weekly"
+    cooldown:
+      default-days: 3
+    groups:
+      nuget:
+        patterns:
+          - "*"
+        update-types:
+          - "minor"
+          - "patch"
+    # Jellyfin.Controller and Jellyfin.Model pin the server version the plugin
+    # loads on (targetAbi in build.yaml and release.yaml), so they are bumped
+    # by hand together with it.
+    ignore:
+      - dependency-name: "Jellyfin.*"
+    commit-message:
+      prefix: "chore(deps)"
