@@ -78,7 +78,7 @@ if [ ! -x "$JF_ROOT/jellyfin/jellyfin" ] || [ "$(cat "$JF_ROOT/jf-version" 2>/de
     rm -rf "$JF_ROOT/jellyfin"
     mkdir -p "$JF_ROOT"
     curl -sSL -o "$JF_ROOT/jellyfin.tar.gz" \
-        "https://repo.jellyfin.org/files/server/linux/latest-stable/amd64/jellyfin_${JF_VERSION}-amd64.tar.gz"
+        "https://repo.jellyfin.org/files/server/linux/stable/v${JF_VERSION}/amd64/jellyfin_${JF_VERSION}-amd64.tar.gz"
     tar xzf "$JF_ROOT/jellyfin.tar.gz" -C "$JF_ROOT"
     rm -f "$JF_ROOT/jellyfin.tar.gz"
     echo "$JF_VERSION" > "$JF_ROOT/jf-version"
