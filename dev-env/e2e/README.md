@@ -21,12 +21,27 @@ serialises `return 'All providers are throttled', 500` in
 `bazarr/api/providers/providers_movies.py`. Error paths like provider throttling cannot be
 triggered on demand in a real Bazarr, and that is precisely what these tests cover.
 
-Each scenario has its own movie, because the plugin caches search results for an hour:
+Each scenario has its own movie or episode, because the plugin caches search results for an
+hour. `FakeBazarr` also writes the subtitle beside the media file on a download, as Bazarr does,
+and records every request it receives.
 
-| Movie                          | Bazarr `radarrId` | Response                          |
-|--------------------------------|-------------------|-----------------------------------|
-| The Matrix (1999), tt0133093   | 1                 | 500 `All providers are throttled` |
-| Inception (2010), tt1375666    | 2                 | one English subtitle              |
+| Item                                   | Bazarr id   | Response / what it covers                                 |
+|----------------------------------------|-------------|-----------------------------------------------------------|
+| The Matrix (1999), tt0133093           | radarr 1    | 500 `All providers are throttled`                         |
+| Inception (2010), tt1375666            | radarr 2    | English subtitles, plain / HI / forced                    |
+| Memento (2000), tt0209144              | radarr 3    | downloadable subtitle, and one Bazarr refuses to fetch    |
+| Alpha - Foxtrot, Juliet Show           | sonarr 1-7  | one step of the episode lookup chain each (see below)     |
+| Golf Show                              | -           | not in Bazarr: no results                                 |
+| Hotel Show S02E05                      | sonarr 8    | episode download and refresh                              |
+
+The episode lookup chain is series TVDB (folder name), series IMDB (folder name), episode TVDB
+and IMDB (episode NFO), original title (`tvshow.nfo`), title, then Bazarr's alternative titles.
+The Bazarr title of the ID-matched series deliberately differs from the Jellyfin one, so only the
+ID step can find it.
+
+Besides the subtitle dialog the tests cover downloads (Bazarr's request, the saved file, the
+post-download refresh, the failure paths), the plugin's configuration page (load, save, Test
+Connection) and the movie/episode switches.
 
 To run against a real Bazarr instead, set `BAZARR_URL` before provisioning.
 
