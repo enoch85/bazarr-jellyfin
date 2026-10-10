@@ -27,8 +27,9 @@ jobs:
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
       # Majors can break the plugin and need a human. Everything else is merged once
-      # CI has passed. main has no required checks (the release workflow pushes the
-      # manifest to it directly), so nothing else would hold the merge back: wait here.
+      # CI and CodeQL have passed. main has no required checks (the release workflow
+      # pushes the manifest to it directly), so nothing else would hold the merge
+      # back: wait here. The ruleset rejects a merge before CodeQL has results.
       - if: steps.meta.outputs.update-type != 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -36,8 +37,9 @@ jobs:
         run: |
           for _ in $(seq 1 90); do
             state=$(gh pr checks "$PR_URL" --json name,bucket --jq '
-              [.[] | select(.name == "call / build" or .name == "call / test" or .name == "e2e")] as $c
-              | if ($c | length) < 3 then "pending"
+              [.[] | select(.name == "call / build" or .name == "call / test" or .name == "e2e"
+                or .name == "Analyze (csharp)")] as $c
+              | if ($c | length) < 4 then "pending"
                 elif any($c[]; .bucket == "fail" or .bucket == "cancel") then "fail"
                 elif all($c[]; .bucket == "pass") then "pass"
                 else "pending" end' || true)
