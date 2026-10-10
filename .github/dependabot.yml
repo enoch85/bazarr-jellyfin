@@ -34,6 +34,13 @@ updates:
         update-types:
           - "minor"
           - "patch"
+      # One PR per major for both projects, not one per directory.
+      nuget-major:
+        group-by: dependency-name
+        patterns:
+          - "*"
+        update-types:
+          - "major"
     # Jellyfin.Controller and Jellyfin.Model pin the server version the plugin
     # loads on (targetAbi in build.yaml and release.yaml), so they are bumped
     # by hand together with it.
