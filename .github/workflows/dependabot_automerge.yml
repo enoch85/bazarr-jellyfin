@@ -4,6 +4,12 @@ on: pull_request
 
 permissions: {}
 
+# A new push to the PR cancels the run still waiting on the old commit's CI, so
+# only the latest commit can be merged and a human push never is.
+concurrency:
+  group: dependabot-automerge-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
 jobs:
   automerge:
     # Dependabot's own PRs only, and only when Dependabot triggered the run:
