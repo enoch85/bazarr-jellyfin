@@ -211,10 +211,14 @@ ITEM_OK=$(find_item tt1375666)
 ITEM_DOWNLOAD=$(find_item tt0209144)
 
 # The episodes are looked up by the tests themselves; wait here until the scan has them all.
+episodes_scanned() {
+    api "$JF_URL/Items?IncludeItemTypes=Episode&Recursive=true" | grep -oE '"TotalRecordCount":[0-9]+' | cut -d: -f2
+}
 for _ in $(seq 1 180); do
-    [ "$(api "$JF_URL/Items?IncludeItemTypes=Episode&Recursive=true" | grep -oE '"TotalRecordCount":[0-9]+' | cut -d: -f2)" = "9" ] && break
+    [ "$(episodes_scanned)" = "9" ] && break
     sleep 1
 done
+[ "$(episodes_scanned)" = "9" ] || { log "the 9 test episodes were not all scanned in"; exit 1; }
 
 # --- 7. Plugin configuration ------------------------------------------------------
 log "configuring Bazarr plugin -> ${BAZARR_URL:-http://127.0.0.1:16767}"
