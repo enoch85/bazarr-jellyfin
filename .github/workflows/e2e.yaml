@@ -1,0 +1,39 @@
+name: '🎭 E2E Tests'
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - '**/*.md'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: 10.0.x
+
+      # Provisions Jellyfin and the plugin, then drives the subtitle dialog in Chromium.
+      - run: dev-env/e2e/run-e2e.sh
+
+      - if: failure()
+        uses: actions/upload-artifact@v7
+        with:
+          name: e2e-failure
+          path: |
+            dev-env/e2e/Jellyfin.Plugin.Bazarr.E2E/bin/Debug/net10.0/failure.*
+          if-no-files-found: ignore
