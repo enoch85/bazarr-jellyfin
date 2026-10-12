@@ -16,8 +16,8 @@ updates:
         update-types:
           - "minor"
           - "patch"
-    # Labels from the sync-labels workflow's config: it deletes any label that is
-    # not in it, so Dependabot's defaults (.NET, github_actions) would be removed.
+    # Labels from .github/labels.yaml: the sync-labels workflow deletes any label
+    # that is not in it, so Dependabot's defaults (.NET, github_actions) would be removed.
     labels:
       - "dependencies"
       - "github-actions"
