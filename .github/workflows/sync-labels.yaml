@@ -5,6 +5,9 @@ on:
     - cron: '0 0 1 * *'
   workflow_dispatch:
 
+permissions:
+  issues: write
+
 jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/sync-labels.yaml@master

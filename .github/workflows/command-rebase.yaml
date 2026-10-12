@@ -5,6 +5,10 @@ on:
     types:
       - rebase-command
 
+permissions:
+  contents: write
+  pull-requests: write
+
 jobs:
   call:
     uses: jellyfin/jellyfin-meta-plugins/.github/workflows/command-rebase.yaml@master
