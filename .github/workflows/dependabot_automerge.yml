@@ -27,9 +27,8 @@ jobs:
         uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
 
       # Majors can break the plugin and need a human. Everything else is merged once
-      # CI and CodeQL have passed. main has no required checks (the release workflow
-      # pushes the manifest to it directly), so nothing else would hold the merge
-      # back: wait here. The ruleset rejects a merge before CodeQL has results.
+      # CI and CodeQL have passed. main has no required checks, so nothing else would
+      # hold the merge back: wait here. The ruleset rejects a merge before CodeQL has results.
       - if: steps.meta.outputs.update-type != 'version-update:semver-major'
         env:
           GH_TOKEN: ${{ github.token }}
