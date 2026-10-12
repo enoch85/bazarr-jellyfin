@@ -161,7 +161,7 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       # main's ruleset rejects a direct push of a commit CodeQL has not scanned yet, so the
-      # manifest goes in through a PR that is merged once CodeQL has passed. It runs after
+      # manifest goes in through a PR that is merged once CI and CodeQL have passed. It runs after
       # the release exists, because the manifest links to the release asset.
       - name: Open manifest PR
         if: github.event_name == 'push'
@@ -186,16 +186,17 @@ jobs:
 
           for _ in $(seq 1 90); do
             state=$(gh pr checks "$PR_URL" --json name,bucket --jq '
-              [.[] | select(.name == "Analyze (csharp)")] as $c
-              | if ($c | length) < 1 then "pending"
+              [.[] | select(.name == "call / build" or .name == "call / test" or .name == "e2e"
+                or .name == "Analyze (csharp)")] as $c
+              | if ($c | length) < 4 then "pending"
                 elif any($c[]; .bucket == "fail" or .bucket == "cancel") then "fail"
                 elif all($c[]; .bucket == "pass") then "pass"
                 else "pending" end' || true)
             [ "$state" = pass ] && break
-            [ "$state" = fail ] && { echo "CodeQL failed, not merging"; exit 1; }
+            [ "$state" = fail ] && { echo "CI failed, not merging"; exit 1; }
             sleep 20
           done
-          [ "$state" = pass ] || { echo "CodeQL did not finish in time, not merging"; exit 1; }
+          [ "$state" = pass ] || { echo "CI did not finish in time, not merging"; exit 1; }
           gh pr merge --squash --delete-branch "$PR_URL"
 
       - name: Upload Artifact (manual trigger)
