@@ -1,0 +1,128 @@
+# Copy of https://github.com/jellyfin/jellyfin-meta-plugins/blob/master/.github/plugin-repo-labels.yaml
+# with every alias that equals the label's own name removed: label-sync deletes such a
+# label instead of keeping it, which also strips it from the pull requests that carry it.
+
+# General Purpose Labels
+- name: major-feature
+  color: '003F00'
+  description: This PR introduces a major new feature
+  aliases:
+    - major-enhancement
+
+- name: major-bug
+  color: 'FF1E0D'
+  description: This PR fixes a major bug
+
+- name: deprecated
+  color: 'FEC111'
+  description: This PR marks a feature, function or other public API element as deprecated
+
+- name: removed
+  color: 'd93f0b'
+  description: This PR removes a feature, function or other public API element
+
+- name: reverted
+  color: 'f05032'
+  description: This PR reverts a commit or multiple commits
+  aliases:
+    - revert
+
+- name: breaking
+  color: 'B60205'
+  description: This PR introduces breaking changes
+
+- name: feature
+  color: '164916'
+  description: This PR or Issue requests or introduces a new feature
+  aliases:
+    - enhancement
+
+- name: bug
+  color: 'd73a4a'
+  description: This PR or Issue describes or fixes something that isn't working
+  aliases:
+    - fix
+    - bugfix
+    - regression
+
+- name: documentation
+  color: '006699'
+  description: This PR or Issue aims to improve or add to documentation
+
+- name: tests
+  color: '25A162'
+  description: This PR adds or imposes tests (e.g. coverage, quality, ...)
+  aliases:
+    - test
+
+# Repository Maintenance Labels
+- name: wontfix
+  color: 'a2eeef'
+  description: This Issue contains a request or 'bug' that wont be fixed (e.g. out-of-scope, not-an-issue, ...)
+
+- name: duplicate
+  color: 'cfd3d7'
+  description: This Issue or PR is a duplicate of an existing Issue or PR
+
+- name: help wanted
+  color: '008672'
+  description: This Issue or PR requires extra attention and/or requires external help
+  aliases:
+    - help-wanted
+
+- name: good first issue
+  color: '7057ff'
+  description: This Issue contains a requirement easy to be picked up by project newcomers
+  aliases:
+    - good-first-issue
+
+- name: confirmed
+  color: 'a5e569'
+  description: This Issue describes a bug that has been confirmed by a org member
+
+- name: invalid
+  color: 'e4e669'
+  description: This Issue describes an invalid request or bug report
+
+- name: question
+  color: 'd876e3'
+  description: This Issue contains a question
+
+- name: blocked
+  color: '8e0900'
+  description: This PR is blocked due to a commented reason
+
+- name: chore
+  color: '36566F'
+  description: This PR contains repository maintenance changes
+
+- name: dependencies
+  color: '1D76DB'
+  description: This PR updates or changes a dependency file
+  aliases:
+    - dependency
+
+- name: github-actions
+  color: '000000'
+  description: This PR updates or changes GH Actions used in this repo
+  aliases:
+    - github_actions
+
+- name: nuget
+  color: '004880'
+  description: This PR updates or changes some NuGet dependencies
+
+- name: ci
+  color: 'FFFF09'
+  description: This PR updates or changes something CI related
+  aliases:
+    - build
+
+- name: release-prep
+  color: 'e0e0e0'
+  description: This PR is a meta PR to prepare for the next release
+
+# Release Drafter Labels
+- name: skip-changelog
+  color: 'e0e0e0'
+  description: This PR gets ignored by the Release Drafter workflow
