@@ -6,6 +6,9 @@ on:
     types:
       - created
 
+# The dispatcher authenticates with its own token, not GITHUB_TOKEN.
+permissions: {}
+
 jobs:
   call:
     # Only run on pull request comments, not issue comments
