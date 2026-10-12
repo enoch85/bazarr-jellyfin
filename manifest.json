@@ -9,6 +9,14 @@
     "imageUrl": "https://raw.githubusercontent.com/enoch85/bazarr-jellyfin/main/Jellyfin.Plugin.Bazarr/logo.png",
     "versions": [
       {
+        "version": "2.0.2.0",
+        "changelog": "See release notes on GitHub",
+        "targetAbi": "12.0.0.0",
+        "sourceUrl": "https://github.com/enoch85/bazarr-jellyfin/releases/download/v2.0.2/Jellyfin.Plugin.Bazarr.zip",
+        "checksum": "ea8048ba8ebb1d0051cb71cad5332905",
+        "timestamp": "2026-10-12T22:26:59Z"
+      },
+      {
         "version": "2.0.1.0",
         "changelog": "See release notes on GitHub",
         "targetAbi": "12.0.0.0",
