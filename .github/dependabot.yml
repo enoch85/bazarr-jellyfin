@@ -16,6 +16,11 @@ updates:
         update-types:
           - "minor"
           - "patch"
+    # Labels from the sync-labels workflow's config: it deletes any label that is
+    # not in it, so Dependabot's defaults (.NET, github_actions) would be removed.
+    labels:
+      - "dependencies"
+      - "github-actions"
     commit-message:
       prefix: "ci"
 
@@ -46,5 +51,8 @@ updates:
     # by hand together with it.
     ignore:
       - dependency-name: "Jellyfin.*"
+    labels:
+      - "dependencies"
+      - "nuget"
     commit-message:
       prefix: "chore(deps)"
