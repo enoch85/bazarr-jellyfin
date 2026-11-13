@@ -97,7 +97,7 @@ public sealed class FakeBazarr : IDisposable
             ("/api/series", _) => (200, Json(new { data = Series.Select(x => x.ToJson()), total = Series.Length })),
             ("/api/providers/episodes", _) when EpisodeFromQuery(query) is { } ep =>
                 (200, Options($"{ep.Series.Title.Replace(' ', '.')}.S{ep.Season:D2}E{ep.Episode:D2}.WEB")),
-            ("/api/episodes", _) when SeriesFromQuery(query) is { } show => (200, Json(new
+            ("/api/episodes", _) when (SeriesFromQuery(query) ?? SeriesFromEpisodeQuery(query)) is { } show => (200, Json(new
             {
                 data = new[]
                 {
@@ -175,6 +175,10 @@ public sealed class FakeBazarr : IDisposable
 
     private static SeriesEntry? SeriesFromQuery(string query) =>
         Series.FirstOrDefault(x => Uri.UnescapeDataString(query) == $"seriesid[]={x.Id}");
+
+    // The plugin resolves an episode's series with /api/episodes?episodeid[]=N.
+    private static SeriesEntry? SeriesFromEpisodeQuery(string query) =>
+        Series.FirstOrDefault(x => Uri.UnescapeDataString(query) == $"episodeid[]={x.EpisodeId}");
 
     private static (SeriesEntry Series, int Season, int Episode)? EpisodeFromQuery(string query) =>
         Series.Where(x => query == $"episodeid={x.EpisodeId}")
