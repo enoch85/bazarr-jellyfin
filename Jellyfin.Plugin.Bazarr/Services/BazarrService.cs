@@ -295,20 +295,22 @@ public class BazarrService : IBazarrService
     /// <inheritdoc />
     public async Task<int> GetSeriesIdByEpisodeIdAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default)
     {
-        // We need to find which series this episode belongs to
-        var series = await GetSeriesAsync(cancellationToken).ConfigureAwait(false);
+        // Ask Bazarr for this one episode instead of walking every series' episode list
+        // (that took ~1 request per series - minutes on large libraries, so clients timed out).
+        var path = $"/api/episodes?episodeid[]={sonarrEpisodeId}";
+        var request = CreateRequest(HttpMethod.Get, path);
+        var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        await ValidateResponseAsync(response, path).ConfigureAwait(false);
 
-        foreach (var show in series)
+        var result = await response.Content.ReadFromJsonAsync<BazarrResponse<BazarrEpisode>>(cancellationToken: cancellationToken).ConfigureAwait(false);
+        var episode = result?.Data?.FirstOrDefault(e => e.SonarrEpisodeId == sonarrEpisodeId);
+        if (episode != null)
         {
-            var episodes = await GetEpisodesAsync(show.SonarrSeriesId, cancellationToken).ConfigureAwait(false);
-            if (episodes.Any(e => e.SonarrEpisodeId == sonarrEpisodeId))
-            {
-                _logger.LogDebug(
-                    "Found Series ID {SeriesId} for Episode ID {EpisodeId}",
-                    show.SonarrSeriesId,
-                    sonarrEpisodeId);
-                return show.SonarrSeriesId;
-            }
+            _logger.LogDebug(
+                "Found Series ID {SeriesId} for Episode ID {EpisodeId}",
+                episode.SonarrSeriesId,
+                sonarrEpisodeId);
+            return episode.SonarrSeriesId;
         }
 
         _logger.LogWarning("Could not find series for episode ID {EpisodeId}", sonarrEpisodeId);
