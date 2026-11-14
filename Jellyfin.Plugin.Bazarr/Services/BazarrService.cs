@@ -346,7 +346,7 @@ public class BazarrService : IBazarrService
     }
 
     /// <inheritdoc />
-    public Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, int sonarrSeriesId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
+    public Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default)
         => SearchAsync(
             $"{EpisodeSearchCacheKeyPrefix}{sonarrEpisodeId}",
             $"episode {sonarrEpisodeId}",

@@ -88,6 +88,7 @@ The episode lookup process uses fallback logic due to an ID mismatch between Jel
 **Bazarr API structure:**
 - `/api/series` returns `tvdbId`, `imdbId`, `sonarrSeriesId` (series-level only)
 - `/api/episodes?seriesid[]={sonarrSeriesId}` returns `sonarrEpisodeId`, `sonarrSeriesId`, `season`, `episode` (NO tvdbId)
+- `/api/episodes?episodeid[]={sonarrEpisodeId}` returns that one episode, with its `sonarrSeriesId`
 - `/api/providers/episodes?episodeid={sonarrEpisodeId}` searches for subtitles
 
 ### Movies Match on IMDB Only (BY DESIGN)

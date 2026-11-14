@@ -85,12 +85,11 @@ public interface IBazarrService
     /// Searches for episode subtitles.
     /// </summary>
     /// <param name="sonarrEpisodeId">The Sonarr Episode ID.</param>
-    /// <param name="sonarrSeriesId">The Sonarr Series ID (needed for download).</param>
     /// <param name="language">The language code.</param>
     /// <param name="timeoutSeconds">Optional timeout in seconds. If exceeded, returns placeholder and continues in background.</param>
     /// <param name="cancellationToken">Cancellation token.</param>
     /// <returns>Search result with subtitles or in-progress indicator.</returns>
-    Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, int sonarrSeriesId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default);
+    Task<SubtitleSearchResult> SearchEpisodeSubtitlesAsync(int sonarrEpisodeId, string language, int timeoutSeconds = 0, CancellationToken cancellationToken = default);
 
     /// <summary>
     /// Downloads a movie subtitle.

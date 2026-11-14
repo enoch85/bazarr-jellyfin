@@ -93,18 +93,7 @@ public class BazarrController : ControllerBase
                 episode.IndexNumber,
                 sonarrEpisodeId);
 
-            // Get series ID for the episode
-            int seriesId;
-            try
-            {
-                seriesId = await _bazarrService.GetSeriesIdByEpisodeIdAsync(sonarrEpisodeId.Value).ConfigureAwait(false);
-            }
-            catch (InvalidOperationException)
-            {
-                return NotFound("Could not find series for episode");
-            }
-
-            return Ok(await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, seriesId, language).ConfigureAwait(false));
+            return Ok(await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, language).ConfigureAwait(false));
         }
 
         return BadRequest("Item must be a movie or episode");
