@@ -1,3 +1,4 @@
+using System.Net.Http.Json;
 using System.Text.Json;
 using Microsoft.Playwright;
 
@@ -49,6 +50,19 @@ public class DownloadTests : JellyfinUiTest
         Assert.Equal(85, body.RootElement.GetProperty("episodeid").GetInt32());
         Assert.Equal(8, body.RootElement.GetProperty("seriesid").GetInt32());
         Assert.Equal("pickled-download", body.RootElement.GetProperty("subtitle").GetString());
+    }
+
+    [Fact]
+    public async Task Episode_DownloadThroughThePluginApi_SendsTheSeriesId()
+    {
+        var itemId = await FindEpisodeAsync("Hotel Show [tvdbid-8008]");
+
+        using var response = await Api.PostAsJsonAsync($"Bazarr/Download/{itemId}", new { provider = "opensubtitlescom", subtitle = "pickled-download" });
+
+        response.EnsureSuccessStatusCode();
+        var post = Assert.Single(Bazarr.Requests, r => r.Method == "POST");
+        using var body = JsonDocument.Parse(post.Body);
+        Assert.Equal(8, body.RootElement.GetProperty("seriesid").GetInt32());
     }
 
     [Fact]
