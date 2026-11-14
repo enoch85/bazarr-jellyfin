@@ -128,17 +128,23 @@ make_episode "Juliet Show" "Juliet Show S01E01.mkv"
 
 # --- 3. Plugin --------------------------------------------------------------------
 log "building plugin"
+# publish only copies files newer than the target, so a build from another checkout could stay
+rm -rf "$JF_ROOT/plugin-build"
 dotnet publish "$REPO_ROOT/Jellyfin.Plugin.Bazarr/Jellyfin.Plugin.Bazarr.csproj" \
     -c Release -o "$JF_ROOT/plugin-build" --nologo -v q
 
 stop_jellyfin() {
+    local pids=()
     for p in /proc/[0-9]*; do
         case "$( { tr '\0' ' ' < "$p/cmdline"; } 2>/dev/null )" in
-            *"jellyfin --datadir $JF_ROOT/data"*) kill "${p#/proc/}" 2>/dev/null || true ;;
+            *"jellyfin --datadir $JF_ROOT/data"*) pids+=("${p#/proc/}") ;;
         esac
     done
+    [ "${#pids[@]}" -gt 0 ] || return 0
+    kill "${pids[@]}" 2>/dev/null || true
+    # Wait for the process, not its port: it keeps writing the log while it shuts down
     for _ in $(seq 1 30); do
-        curl -s -o /dev/null --max-time 1 "$JF_URL/System/Info/Public" || return 0
+        kill -0 "${pids[@]}" 2>/dev/null || return 0
         sleep 1
     done
 }
