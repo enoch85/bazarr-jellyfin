@@ -523,6 +523,24 @@ public class BazarrService : IBazarrService
     }
 
     /// <inheritdoc />
+    public Task<int> GetMovieHistoryCountAsync(int radarrId, CancellationToken cancellationToken = default)
+        => GetHistoryCountAsync($"/api/movies/history?radarrid={radarrId}&length=1", cancellationToken);
+
+    /// <inheritdoc />
+    public Task<int> GetEpisodeHistoryCountAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default)
+        => GetHistoryCountAsync($"/api/episodes/history?episodeid={sonarrEpisodeId}&length=1", cancellationToken);
+
+    private async Task<int> GetHistoryCountAsync(string path, CancellationToken cancellationToken)
+    {
+        var request = CreateRequest(HttpMethod.Get, path);
+        var response = await _httpClient.SendAsync(request, cancellationToken).ConfigureAwait(false);
+        await ValidateResponseAsync(response, path).ConfigureAwait(false);
+
+        var result = await response.Content.ReadFromJsonAsync<BazarrResponse<object>>(cancellationToken: cancellationToken).ConfigureAwait(false);
+        return result?.Total ?? 0;
+    }
+
+    /// <inheritdoc />
     public async Task<IReadOnlyList<BazarrLanguage>> GetLanguagesAsync()
     {
         _logger.LogDebug("Fetching languages from Bazarr");
