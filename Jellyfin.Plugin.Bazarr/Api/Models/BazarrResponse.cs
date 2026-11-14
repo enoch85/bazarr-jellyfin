@@ -16,4 +16,10 @@ public class BazarrResponse<T>
 #pragma warning disable CA2227 // Collection properties should be read only - needed for JSON deserialization
     public IReadOnlyList<T>? Data { get; set; }
 #pragma warning restore CA2227
+
+    /// <summary>
+    /// Gets or sets the total number of records.
+    /// </summary>
+    [JsonPropertyName("total")]
+    public int Total { get; set; }
 }

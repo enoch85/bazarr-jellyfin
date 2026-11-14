@@ -44,7 +44,7 @@ git tag -a v1.1.5 -m "Description of changes" && git push origin v1.1.5
 
 ### Subtitle Download Exception Pattern (BY DESIGN)
 
-When downloading subtitles, the plugin throws an `InvalidOperationException` after a successful Bazarr download. **This is intentional and correct behavior.**
+When downloading subtitles, the plugin throws an `InvalidOperationException` once Bazarr has accepted the download. **This is intentional and correct behavior.**
 
 **Why this is necessary:**
 - Jellyfin's `ISubtitleProvider.GetSubtitles()` expects a `SubtitleResponse` with a `Stream` that Jellyfin will save to disk
@@ -52,18 +52,19 @@ When downloading subtitles, the plugin throws an `InvalidOperationException` aft
 - If we returned an empty stream, Jellyfin would save a 0-byte file
 - If we returned `null` stream, Jellyfin would crash in `TrySaveSubtitle`
 
-**The exception message informs the user that the download succeeded and they need to refresh the dialog.**
+**The exception message says Bazarr is downloading the subtitle and the dialog needs reopening.**
 
 ```csharp
 throw new InvalidOperationException(
-    "Subtitle downloaded successfully by Bazarr. " +
-    "The item is being refreshed - please close and reopen this dialog to see the new subtitle.");
+    "Bazarr is downloading the subtitle - close and reopen this dialog in a moment to see it.");
 ```
 
 **DO NOT "FIX" THIS** - it's the correct workaround for Bazarr's server-side download architecture.
 
 Jellyfin then skips its own refresh, so the plugin refreshes the item whose ID the subtitle ID carries.
 Don't match the item from Bazarr's data: season/episode numbers refreshed another show's episode.
+Bazarr (1.5.4+) queues the download and answers before the file exists, so the refresh waits until
+Bazarr's history for the item records the download.
 
 ### Episode Subtitle Lookup Architecture
 

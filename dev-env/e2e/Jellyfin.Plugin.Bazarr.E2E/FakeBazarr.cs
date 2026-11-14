@@ -14,8 +14,9 @@ namespace Jellyfin.Plugin.Bazarr.E2E;
 /// Each scenario gets its own movie or episode so the plugin's one-hour result cache cannot
 /// leak between tests.
 ///
-/// Like Bazarr, a download writes the subtitle next to the media file itself and answers 204;
-/// the file location comes from the table below, never from the request.
+/// Like Bazarr 1.5.4+, a download is a queued job: it answers 204 at once, then writes the subtitle
+/// next to the media file and records it in the history. The file location comes from the table
+/// below, never from the request.
 /// </summary>
 public sealed class FakeBazarr : IDisposable
 {
@@ -41,6 +42,8 @@ public sealed class FakeBazarr : IDisposable
     private readonly HttpListener _listener = new();
     private readonly ConcurrentQueue<RecordedRequest> _requests = new();
     private readonly string? _mediaRoot;
+    private readonly ConcurrentDictionary<string, int> _history = new();
+    private int _finishedJobs;
 
     public FakeBazarr(int port = 16767, string? mediaRoot = null)
     {
@@ -54,6 +57,8 @@ public sealed class FakeBazarr : IDisposable
     public string Url { get; }
 
     public IReadOnlyList<RecordedRequest> Requests => [.. _requests];
+
+    public int FinishedJobs => Volatile.Read(ref _finishedJobs);
 
     public void Dispose()
     {
@@ -94,6 +99,8 @@ public sealed class FakeBazarr : IDisposable
                   "original_format":"False","hearing_impaired":"False","forced":"True","uploader":"someone"}]}
                 """),
             ("/api/providers/movies", "radarrid=3") => (200, Options("Memento.2000.1080p.BluRay.x264")),
+            ("/api/movies/history" or "/api/episodes/history", _) =>
+                (200, Json(new { data = Array.Empty<object>(), total = _history.GetValueOrDefault(query.Split('&')[0]) })),
             ("/api/series", _) => (200, Json(new { data = Series.Select(x => x.ToJson()), total = Series.Length })),
             ("/api/providers/episodes", _) when EpisodeFromQuery(query) is { } ep =>
                 (200, Options($"{ep.Series.Title.Replace(' ', '.')}.S{ep.Season:D2}E{ep.Episode:D2}.WEB")),
@@ -136,25 +143,22 @@ public sealed class FakeBazarr : IDisposable
         var root = json.RootElement;
         string? Text(string name) => root.TryGetProperty(name, out var v) ? v.ToString() : null;
 
-        // Only the subtitle FakeBazarr offered can be fetched; anything else is a Bazarr refusal.
-        if (Text("subtitle") != "pickled-download")
-        {
-            return (500, "\"Unable to download subtitle\"\n");
-        }
-
         // The ids sent must be the real ones, and in the form the plugin documents: Bazarr's
         // hi/forced/original_format are the strings "True"/"False".
-        string target;
+        string target, history;
         switch (path)
         {
             case "/api/providers/movies" when Text("radarrid") == "3":
                 target = "movies/Memento (2000) [imdbid-tt0209144]/Memento.2000.1080p.BluRay.x264";
+                history = "radarrid=3";
                 break;
             case "/api/providers/episodes" when Text("episodeid") == "85" && Text("seriesid") == "8":
                 target = "shows/Hotel Show [tvdbid-8008]/Season 02/Hotel Show S02E05";
+                history = "episodeid=85";
                 break;
             case "/api/providers/episodes" when Text("episodeid") == "61" && Text("seriesid") == "6":
                 target = "shows/Foxtrot Show/Season 01/Foxtrot Show S01E01";
+                history = "episodeid=61";
                 break;
             default:
                 return (400, "\"Unknown item\"\n");
@@ -166,10 +170,19 @@ public sealed class FakeBazarr : IDisposable
             return (400, "\"Bad download request\"\n");
         }
 
-        if (_mediaRoot is not null)
+        // Only the subtitle FakeBazarr offered can be fetched; anything else fails inside the job.
+        var fetchable = Text("subtitle") == "pickled-download";
+        _ = Task.Run(async () =>
         {
-            File.WriteAllText(Path.Combine(_mediaRoot, target + ".en.srt"), SubtitleText);
-        }
+            await Task.Delay(TimeSpan.FromSeconds(2));
+            if (fetchable && _mediaRoot is not null)
+            {
+                File.WriteAllText(Path.Combine(_mediaRoot, target + ".en.srt"), SubtitleText);
+                _history.AddOrUpdate(history, 1, (_, count) => count + 1);
+            }
+
+            Interlocked.Increment(ref _finishedJobs);
+        });
 
         return (204, string.Empty);
     }

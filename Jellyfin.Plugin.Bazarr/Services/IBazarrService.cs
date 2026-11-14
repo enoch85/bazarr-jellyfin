@@ -109,6 +109,22 @@ public interface IBazarrService
     Task<bool> DownloadEpisodeSubtitleAsync(DownloadRequest request, CancellationToken cancellationToken = default);
 
     /// <summary>
+    /// Gets the number of history records Bazarr holds for a movie.
+    /// </summary>
+    /// <param name="radarrId">The Radarr ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of history records.</returns>
+    Task<int> GetMovieHistoryCountAsync(int radarrId, CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Gets the number of history records Bazarr holds for an episode.
+    /// </summary>
+    /// <param name="sonarrEpisodeId">The Sonarr Episode ID.</param>
+    /// <param name="cancellationToken">Cancellation token.</param>
+    /// <returns>The number of history records.</returns>
+    Task<int> GetEpisodeHistoryCountAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default);
+
+    /// <summary>
     /// Gets available languages from Bazarr.
     /// </summary>
     /// <returns>List of languages.</returns>

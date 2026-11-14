@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -23,6 +24,9 @@ namespace Jellyfin.Plugin.Bazarr.Providers;
 /// </summary>
 public class BazarrSubtitleProvider : ISubtitleProvider
 {
+    private static readonly TimeSpan DownloadPollInterval = TimeSpan.FromSeconds(2);
+    private static readonly TimeSpan DownloadWaitLimit = TimeSpan.FromMinutes(10);
+
     private readonly ILogger<BazarrSubtitleProvider> _logger;
     private readonly IBazarrService _bazarrService;
     private readonly ILibraryManager _libraryManager;
@@ -180,6 +184,12 @@ public class BazarrSubtitleProvider : ISubtitleProvider
         var subtitle = Uri.UnescapeDataString(parts[5]);
         var itemId = Guid.Parse(parts[6], System.Globalization.CultureInfo.InvariantCulture);
 
+        // Bazarr queues the download and answers before the file exists; its history records the download once saved
+        Func<Task<int>> historyCount = itemType == "movie"
+            ? () => _bazarrService.GetMovieHistoryCountAsync(bazarrId, CancellationToken.None)
+            : () => _bazarrService.GetEpisodeHistoryCountAsync(bazarrId, CancellationToken.None);
+        var historyBefore = await historyCount().ConfigureAwait(false);
+
         bool success;
         if (itemType == "movie")
         {
@@ -222,16 +232,39 @@ public class BazarrSubtitleProvider : ISubtitleProvider
             throw new InvalidOperationException("Failed to download subtitle from Bazarr");
         }
 
-        // Bazarr downloads directly to the media folder.
-        // Trigger a refresh of the item so Jellyfin picks up the new subtitle.
-        await RefreshItemSubtitlesAsync(itemId, cancellationToken).ConfigureAwait(false);
+        _ = RefreshWhenDownloadedAsync(historyCount, historyBefore, itemId);
 
         // We throw an exception to prevent Jellyfin from trying to save an empty file.
-        // The subtitle has been saved by Bazarr and the item has been refreshed.
-        _logger.LogInformation("Subtitle downloaded by Bazarr and item refresh triggered.");
         throw new InvalidOperationException(
-            "Subtitle downloaded successfully by Bazarr. " +
-            "The item is being refreshed - please close and reopen this dialog to see the new subtitle.");
+            "Bazarr is downloading the subtitle - close and reopen this dialog in a moment to see it.");
+    }
+
+    /// <summary>
+    /// Refreshes the item once Bazarr's history records the download.
+    /// </summary>
+    private async Task RefreshWhenDownloadedAsync(Func<Task<int>> historyCount, int historyBefore, Guid itemId)
+    {
+        try
+        {
+            var waited = Stopwatch.StartNew();
+            do
+            {
+                if (waited.Elapsed > DownloadWaitLimit)
+                {
+                    _logger.LogWarning("Bazarr did not record the download for item {ItemId} within {Minutes} minutes", itemId, DownloadWaitLimit.TotalMinutes);
+                    return;
+                }
+
+                await Task.Delay(DownloadPollInterval).ConfigureAwait(false);
+            }
+            while (await historyCount().ConfigureAwait(false) <= historyBefore);
+
+            await RefreshItemSubtitlesAsync(itemId, CancellationToken.None).ConfigureAwait(false);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error waiting for Bazarr to download the subtitle for item {ItemId}", itemId);
+        }
     }
 
     /// <summary>

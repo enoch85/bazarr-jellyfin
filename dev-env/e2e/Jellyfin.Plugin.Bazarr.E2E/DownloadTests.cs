@@ -69,15 +69,14 @@ public class DownloadTests : JellyfinUiTest
     }
 
     [Fact]
-    public async Task BazarrRefusingTheDownload_ReportsItAndSavesNothing()
+    public async Task BazarrFailingTheDownload_SavesNothing()
     {
         var itemId = Env("JF_ITEM_DOWNLOAD");
         var folder = await FreshFolderAsync(itemId, MovieDir);
 
-        var log = LogMark();
         await DownloadFromDialogAsync(itemId, "Memento.2000.1080p.BluRay.x264.REFUSED");
 
-        await WaitForLogAsync(log, "Failed to download subtitle from Bazarr");
+        await WaitForAsync(() => Task.FromResult(Bazarr.FinishedJobs == 1), "Bazarr to finish the download job");
         Assert.Single(Bazarr.Requests, r => r.Method == "POST");
         Assert.Empty(Directory.GetFiles(folder, "*.srt"));
         Assert.Empty(await ExternalSubtitlesAsync(itemId));
@@ -132,16 +131,16 @@ public class DownloadTests : JellyfinUiTest
 
     private async Task AssertDownloadedAsync(string itemId, string folder, string expectedFile, long log)
     {
-        // The plugin fails Jellyfin's save on purpose once Bazarr has the subtitle.
-        await WaitForLogAsync(log, "Subtitle downloaded successfully by Bazarr");
+        // The plugin fails Jellyfin's save on purpose, as Bazarr saves the subtitle itself.
+        await WaitForLogAsync(log, "Bazarr is downloading the subtitle");
+
+        // The post-download refresh is what makes the file show up without a library scan.
+        await WaitForAsync(async () => (await ExternalSubtitlesAsync(itemId)).Count == 1, "Jellyfin to pick up the subtitle");
 
         // Only Bazarr's file may exist: Jellyfin would have saved an empty one had the plugin returned a stream.
         var saved = Assert.Single(Directory.GetFiles(folder, "*.srt"));
         Assert.Equal(expectedFile, Path.GetFileName(saved));
         Assert.Contains("Hello from Bazarr", await File.ReadAllTextAsync(saved), StringComparison.Ordinal);
-
-        // The post-download refresh is what makes the file show up without a library scan.
-        await WaitForAsync(async () => (await ExternalSubtitlesAsync(itemId)).Count == 1, "Jellyfin to pick up the subtitle");
         Assert.Equal(saved, Assert.Single(await ExternalSubtitlesAsync(itemId)));
     }
 
