@@ -291,4 +291,49 @@ public class BazarrServiceIdLookupTests : IDisposable
     }
 
     #endregion
+
+    #region GetSeriesIdByEpisodeIdAsync Tests
+
+    /// <summary>
+    /// The series lookup must ask Bazarr for the single episode, not walk every series' episode list
+    /// (one request per series made episode searches take minutes on large libraries).
+    /// </summary>
+    [Fact]
+    public async Task GetSeriesIdByEpisodeIdAsync_UsesSingleEpisodeRequest()
+    {
+        // Arrange
+        var episodeJson = """
+        {
+            "data": [
+                { "sonarrEpisodeId": 32180, "sonarrSeriesId": 840, "season": 1, "episode": 2, "title": "Great Britain" }
+            ]
+        }
+        """;
+        _mockHandler.QueueResponse(HttpStatusCode.OK, episodeJson);
+
+        // Act
+        var result = await _service.GetSeriesIdByEpisodeIdAsync(32180);
+
+        // Assert
+        Assert.Equal(840, result);
+        var request = Assert.Single(_mockHandler.CapturedRequests);
+        Assert.EndsWith("/api/episodes", request.RequestUri?.AbsolutePath);
+        Assert.Contains("episodeid[]=32180", Uri.UnescapeDataString(request.RequestUri?.Query ?? string.Empty));
+    }
+
+    /// <summary>
+    /// When Bazarr doesn't know the episode, throw as before.
+    /// </summary>
+    [Fact]
+    public async Task GetSeriesIdByEpisodeIdAsync_WhenEpisodeNotFound_Throws()
+    {
+        // Arrange
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [] }""");
+
+        // Act & Assert
+        await Assert.ThrowsAsync<InvalidOperationException>(() => _service.GetSeriesIdByEpisodeIdAsync(999));
+        Assert.Single(_mockHandler.CapturedRequests);
+    }
+
+    #endregion
 }

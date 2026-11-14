@@ -171,8 +171,8 @@ public class BazarrServiceRequestTests : IDisposable
         var subtitlesJson = """{"data": []}""";
         _mockHandler.QueueResponse(HttpStatusCode.OK, subtitlesJson);
 
-        // Act - seriesId is required for episode search
-        await _service.SearchEpisodeSubtitlesAsync(456, 123, "en");
+        // Act
+        await _service.SearchEpisodeSubtitlesAsync(456, "en");
 
         // Assert
         var request = _mockHandler.LastRequest;

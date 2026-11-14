@@ -201,10 +201,7 @@ public class EpisodeSubtitleHandler
 
         var languageCode = SubtitleLanguageHelper.GetLanguageCode(language, twoLetterISOLanguageName);
 
-        // Get the series ID for this episode
-        var sonarrSeriesId = await _bazarrService.GetSeriesIdByEpisodeIdAsync(sonarrEpisodeId.Value, cancellationToken).ConfigureAwait(false);
-
-        var searchResult = await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, sonarrSeriesId, languageCode, timeoutSeconds, cancellationToken).ConfigureAwait(false);
+        var searchResult = await _bazarrService.SearchEpisodeSubtitlesAsync(sonarrEpisodeId.Value, languageCode, timeoutSeconds, cancellationToken).ConfigureAwait(false);
 
         // If search is still in progress, return a placeholder to inform the user
         if (searchResult.SearchInProgress)
