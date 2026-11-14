@@ -33,7 +33,7 @@ public class MovieSubtitleHandler
     /// <summary>
     /// Searches for movie subtitles.
     /// </summary>
-    /// <param name="itemId">The Jellyfin item searched for, carried in the subtitle IDs.</param>
+    /// <param name="itemId">The Jellyfin item ID.</param>
     /// <param name="providerIds">The provider IDs (TMDB, IMDB, etc.).</param>
     /// <param name="name">The movie name.</param>
     /// <param name="language">The full language string.</param>

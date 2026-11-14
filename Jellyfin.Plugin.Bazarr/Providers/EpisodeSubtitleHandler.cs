@@ -33,7 +33,7 @@ public class EpisodeSubtitleHandler
     /// <summary>
     /// Searches for episode subtitles.
     /// </summary>
-    /// <param name="itemId">The Jellyfin item searched for, carried in the subtitle IDs.</param>
+    /// <param name="itemId">The Jellyfin item ID.</param>
     /// <param name="providerIds">The provider IDs (TVDB, IMDB, etc.) - typically episode-level.</param>
     /// <param name="seriesName">The series name (may be localized).</param>
     /// <param name="seasonNumber">The season number.</param>

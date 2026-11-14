@@ -99,7 +99,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
         {
             var timeout = config.SearchTimeoutSeconds;
 
-            // Subtitle IDs carry the item, so the post-download refresh can target exactly this one.
+            // Carried in the subtitle IDs for the post-download refresh
             var item = string.IsNullOrEmpty(request.MediaPath) ? null : _libraryManager.FindByPath(request.MediaPath, false);
             var itemId = item?.Id ?? Guid.Empty;
 
@@ -129,7 +129,6 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                     return Enumerable.Empty<RemoteSubtitleInfo>();
                 }
 
-                // Series-level IDs and the original title come from the library
                 var series = (item as Episode)?.Series;
 
                 return await _episodeHandler.SearchAsync(
@@ -166,7 +165,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
             throw new InvalidOperationException("This entry is a status message, not a subtitle. Run the search again once Bazarr has results.");
         }
 
-        // ID format: "movie|radarrId" or "episode|sonarrEpisodeId", then "|provider|hi|forced|subtitle(escaped)|itemId"
+        // ID format: "{movie|episode}|{bazarrId}|provider|hi|forced|subtitle(escaped)|itemId"
         var parts = id.Split('|');
         if (parts.Length < 7)
         {
@@ -236,7 +235,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
     }
 
     /// <summary>
-    /// Refreshes the item the subtitle was searched for, so Jellyfin picks up the file Bazarr wrote.
+    /// Refreshes an item's subtitles after download.
     /// </summary>
     private async Task RefreshItemSubtitlesAsync(Guid itemId, CancellationToken cancellationToken)
     {

@@ -62,10 +62,8 @@ throw new InvalidOperationException(
 
 **DO NOT "FIX" THIS** - it's the correct workaround for Bazarr's server-side download architecture.
 
-Because of the exception Jellyfin skips its own post-download refresh, so the plugin refreshes the item
-itself: subtitle IDs carry the ID of the Jellyfin item the search ran for. Don't look the item up from
-Bazarr's data instead - Bazarr has no episode-level IDs, and matching on season/episode numbers refreshed
-another show's episode.
+Jellyfin then skips its own refresh, so the plugin refreshes the item whose ID the subtitle ID carries.
+Don't match the item from Bazarr's data: season/episode numbers refreshed another show's episode.
 
 ### Episode Subtitle Lookup Architecture
 
