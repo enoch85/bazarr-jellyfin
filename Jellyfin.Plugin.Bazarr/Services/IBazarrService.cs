@@ -123,22 +123,6 @@ public interface IBazarrService
     Task<int> GetSeriesIdByEpisodeIdAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default);
 
     /// <summary>
-    /// Gets a movie by its Radarr ID.
-    /// </summary>
-    /// <param name="radarrId">The Radarr ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The movie, or null if not found.</returns>
-    Task<BazarrMovie?> GetMovieByRadarrIdAsync(int radarrId, CancellationToken cancellationToken = default);
-
-    /// <summary>
-    /// Gets an episode by its Sonarr Episode ID.
-    /// </summary>
-    /// <param name="sonarrEpisodeId">The Sonarr Episode ID.</param>
-    /// <param name="cancellationToken">Cancellation token.</param>
-    /// <returns>The episode, or null if not found.</returns>
-    Task<BazarrEpisode?> GetEpisodeBySonarrIdAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default);
-
-    /// <summary>
     /// Tests the connection to Bazarr.
     /// </summary>
     /// <returns>Connection test result.</returns>

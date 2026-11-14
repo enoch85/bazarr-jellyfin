@@ -13,7 +13,6 @@ namespace Jellyfin.Plugin.Bazarr.E2E;
 public class DownloadTests : JellyfinUiTest
 {
     private const string MovieDir = "movies/Memento (2000) [imdbid-tt0209144]";
-    private const string EpisodeDir = "shows/Hotel Show [tvdbid-8008]/Season 02";
 
     [Fact]
     public async Task Movie_DownloadIsRequestedFromBazarr_SavedBesideTheFile_AndPickedUpByJellyfin()
@@ -34,21 +33,25 @@ public class DownloadTests : JellyfinUiTest
         Assert.Equal("pickled-download", body.RootElement.GetProperty("subtitle").GetString());
     }
 
-    [Fact]
-    public async Task Episode_DownloadIsRequestedFromBazarr_SavedBesideTheFile_AndPickedUpByJellyfin()
+    [Theory]
+    [InlineData("Hotel Show [tvdbid-8008]/Season 02", "Hotel.Reference.S02E05.WEB.OK", "Hotel Show S02E05.en.srt", 85, 8)]
+    // Other shows have an S01E01 too, so only the searched episode may be refreshed.
+    [InlineData("Foxtrot Show/Season 01", "Foxtrot.Show.S01E01.WEB.OK", "Foxtrot Show S01E01.en.srt", 61, 6)]
+    public async Task Episode_DownloadIsRequestedFromBazarr_SavedBesideTheFile_AndPickedUpByJellyfin(
+        string dir, string release, string file, int episodeId, int seriesId)
     {
-        var itemId = await FindEpisodeAsync("Hotel Show [tvdbid-8008]");
-        var folder = await FreshFolderAsync(itemId, EpisodeDir);
+        var itemId = await FindEpisodeAsync(dir);
+        var folder = await FreshFolderAsync(itemId, $"shows/{dir}");
 
         var log = LogMark();
-        await DownloadFromDialogAsync(itemId, "Hotel.Reference.S02E05.WEB.OK");
+        await DownloadFromDialogAsync(itemId, release);
 
-        await AssertDownloadedAsync(itemId, folder, "Hotel Show S02E05.en.srt", log);
+        await AssertDownloadedAsync(itemId, folder, file, log);
         var post = Assert.Single(Bazarr.Requests, r => r.Method == "POST");
         Assert.Equal("/api/providers/episodes", post.PathAndQuery);
         using var body = JsonDocument.Parse(post.Body);
-        Assert.Equal(85, body.RootElement.GetProperty("episodeid").GetInt32());
-        Assert.Equal(8, body.RootElement.GetProperty("seriesid").GetInt32());
+        Assert.Equal(episodeId, body.RootElement.GetProperty("episodeid").GetInt32());
+        Assert.Equal(seriesId, body.RootElement.GetProperty("seriesid").GetInt32());
         Assert.Equal("pickled-download", body.RootElement.GetProperty("subtitle").GetString());
     }
 

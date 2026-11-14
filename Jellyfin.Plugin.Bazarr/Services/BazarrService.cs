@@ -541,32 +541,6 @@ public class BazarrService : IBazarrService
     }
 
     /// <inheritdoc />
-    public async Task<BazarrMovie?> GetMovieByRadarrIdAsync(int radarrId, CancellationToken cancellationToken = default)
-    {
-        var movies = await GetMoviesAsync(cancellationToken).ConfigureAwait(false);
-        return movies.FirstOrDefault(m => m.RadarrId == radarrId);
-    }
-
-    /// <inheritdoc />
-    public async Task<BazarrEpisode?> GetEpisodeBySonarrIdAsync(int sonarrEpisodeId, CancellationToken cancellationToken = default)
-    {
-        // First we need to find which series this episode belongs to
-        var series = await GetSeriesAsync(cancellationToken).ConfigureAwait(false);
-
-        foreach (var s in series)
-        {
-            var episodes = await GetEpisodesAsync(s.SonarrSeriesId, cancellationToken).ConfigureAwait(false);
-            var episode = episodes.FirstOrDefault(e => e.SonarrEpisodeId == sonarrEpisodeId);
-            if (episode != null)
-            {
-                return episode;
-            }
-        }
-
-        return null;
-    }
-
-    /// <inheritdoc />
     public async Task<ConnectionTestResult> TestConnectionAsync()
     {
         var url = _configProvider.BazarrUrl ?? "(null)";

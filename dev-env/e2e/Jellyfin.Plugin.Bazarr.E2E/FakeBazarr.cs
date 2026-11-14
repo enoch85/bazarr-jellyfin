@@ -153,6 +153,9 @@ public sealed class FakeBazarr : IDisposable
             case "/api/providers/episodes" when Text("episodeid") == "85" && Text("seriesid") == "8":
                 target = "shows/Hotel Show [tvdbid-8008]/Season 02/Hotel Show S02E05";
                 break;
+            case "/api/providers/episodes" when Text("episodeid") == "61" && Text("seriesid") == "6":
+                target = "shows/Foxtrot Show/Season 01/Foxtrot Show S01E01";
+                break;
             default:
                 return (400, "\"Unknown item\"\n");
         }

@@ -33,6 +33,7 @@ public class EpisodeSubtitleHandler
     /// <summary>
     /// Searches for episode subtitles.
     /// </summary>
+    /// <param name="itemId">The Jellyfin item ID.</param>
     /// <param name="providerIds">The provider IDs (TVDB, IMDB, etc.) - typically episode-level.</param>
     /// <param name="seriesName">The series name (may be localized).</param>
     /// <param name="seasonNumber">The season number.</param>
@@ -45,6 +46,7 @@ public class EpisodeSubtitleHandler
     /// <param name="originalSeriesName">Optional original (non-localized) series name.</param>
     /// <returns>A list of remote subtitle info.</returns>
     public async Task<IEnumerable<RemoteSubtitleInfo>> SearchAsync(
+        Guid itemId,
         Dictionary<string, string> providerIds,
         string? seriesName,
         int? seasonNumber,
@@ -236,7 +238,7 @@ public class EpisodeSubtitleHandler
         return filteredSubtitles.Select(s => new RemoteSubtitleInfo
         {
             // Encode the subtitle info in the ID
-            Id = $"episode|{sonarrEpisodeId}|{s.Provider}|{s.HearingImpaired ?? "False"}|{s.Forced ?? "False"}|{Uri.EscapeDataString(s.Subtitle)}",
+            Id = $"episode|{sonarrEpisodeId}|{s.Provider}|{s.HearingImpaired ?? "False"}|{s.Forced ?? "False"}|{Uri.EscapeDataString(s.Subtitle)}|{itemId:N}",
             Name = s.Release,
             ProviderName = "Bazarr",
             Format = SubtitleLanguageHelper.GetSubtitleFormat(s.OriginalFormat),

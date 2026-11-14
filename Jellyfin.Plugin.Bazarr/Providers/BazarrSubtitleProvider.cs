@@ -3,9 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Jellyfin.Data.Enums;
 using Jellyfin.Plugin.Bazarr.Services;
-using MediaBrowser.Controller.Entities;
 using MediaBrowser.Controller.Entities.Movies;
 using MediaBrowser.Controller.Entities.TV;
 using MediaBrowser.Controller.Library;
@@ -101,6 +99,10 @@ public class BazarrSubtitleProvider : ISubtitleProvider
         {
             var timeout = config.SearchTimeoutSeconds;
 
+            // Carried in the subtitle IDs for the post-download refresh
+            var item = string.IsNullOrEmpty(request.MediaPath) ? null : _libraryManager.FindByPath(request.MediaPath, false);
+            var itemId = item?.Id ?? Guid.Empty;
+
             if (request.ContentType == VideoContentType.Movie)
             {
                 if (!config.EnableForMovies)
@@ -110,6 +112,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                 }
 
                 return await _movieHandler.SearchAsync(
+                    itemId,
                     request.ProviderIds,
                     request.Name,
                     request.Language,
@@ -126,35 +129,10 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                     return Enumerable.Empty<RemoteSubtitleInfo>();
                 }
 
-                // Try to get series-level info from the library
-                Dictionary<string, string>? seriesProviderIds = null;
-                string? originalSeriesName = null;
-
-                if (!string.IsNullOrEmpty(request.MediaPath))
-                {
-                    try
-                    {
-                        var item = _libraryManager.FindByPath(request.MediaPath, false);
-                        if (item is Episode episode && episode.Series != null)
-                        {
-                            var series = episode.Series;
-                            seriesProviderIds = series.ProviderIds;
-                            originalSeriesName = series.OriginalTitle;
-
-                            _logger.LogDebug(
-                                "Resolved series from MediaPath: {SeriesName} (Original: {OriginalTitle}), SeriesProviderIds: {ProviderIds}",
-                                series.Name,
-                                originalSeriesName ?? "(none)",
-                                seriesProviderIds != null ? string.Join(", ", seriesProviderIds.Select(kv => $"{kv.Key}={kv.Value}")) : "(none)");
-                        }
-                    }
-                    catch (Exception ex)
-                    {
-                        _logger.LogDebug(ex, "Could not resolve series from MediaPath: {Path}", request.MediaPath);
-                    }
-                }
+                var series = (item as Episode)?.Series;
 
                 return await _episodeHandler.SearchAsync(
+                    itemId,
                     request.ProviderIds,
                     request.SeriesName,
                     request.ParentIndexNumber,
@@ -163,8 +141,8 @@ public class BazarrSubtitleProvider : ISubtitleProvider
                     request.TwoLetterISOLanguageName,
                     timeout,
                     cancellationToken,
-                    seriesProviderIds,
-                    originalSeriesName).ConfigureAwait(false);
+                    series?.ProviderIds,
+                    series?.OriginalTitle).ConfigureAwait(false);
             }
         }
         catch (Exception ex)
@@ -187,9 +165,9 @@ public class BazarrSubtitleProvider : ISubtitleProvider
             throw new InvalidOperationException("This entry is a status message, not a subtitle. Run the search again once Bazarr has results.");
         }
 
-        // ID format: "movie|episode|radarrId|sonarrEpisodeId|provider|hi|forced|subtitle(escaped)"
+        // ID format: "{movie|episode}|{bazarrId}|provider|hi|forced|subtitle(escaped)|itemId"
         var parts = id.Split('|');
-        if (parts.Length < 6)
+        if (parts.Length < 7)
         {
             throw new ArgumentException($"Invalid subtitle ID format: {id}");
         }
@@ -200,6 +178,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
         var hi = parts[3];
         var forced = parts[4];
         var subtitle = Uri.UnescapeDataString(parts[5]);
+        var itemId = Guid.Parse(parts[6], System.Globalization.CultureInfo.InvariantCulture);
 
         bool success;
         if (itemType == "movie")
@@ -245,7 +224,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
 
         // Bazarr downloads directly to the media folder.
         // Trigger a refresh of the item so Jellyfin picks up the new subtitle.
-        await RefreshItemSubtitlesAsync(itemType, bazarrId, cancellationToken).ConfigureAwait(false);
+        await RefreshItemSubtitlesAsync(itemId, cancellationToken).ConfigureAwait(false);
 
         // We throw an exception to prevent Jellyfin from trying to save an empty file.
         // The subtitle has been saved by Bazarr and the item has been refreshed.
@@ -258,50 +237,14 @@ public class BazarrSubtitleProvider : ISubtitleProvider
     /// <summary>
     /// Refreshes an item's subtitles after download.
     /// </summary>
-    private async Task RefreshItemSubtitlesAsync(string itemType, int bazarrId, CancellationToken cancellationToken)
+    private async Task RefreshItemSubtitlesAsync(Guid itemId, CancellationToken cancellationToken)
     {
         try
         {
-            BaseItem? item = null;
-
-            if (itemType == "movie")
-            {
-                // Match on IMDB - Bazarr's /api/movies response carries no TMDB ID
-                var radarrMovie = await _bazarrService.GetMovieByRadarrIdAsync(bazarrId, cancellationToken).ConfigureAwait(false);
-                if (!string.IsNullOrEmpty(radarrMovie?.ImdbId))
-                {
-                    var movies = _libraryManager.GetItemList(new InternalItemsQuery
-                    {
-                        IncludeItemTypes = [BaseItemKind.Movie],
-                        IsVirtualItem = false,
-                        Recursive = true
-                    });
-                    item = movies.FirstOrDefault(m =>
-                        m.ProviderIds.TryGetValue("Imdb", out var id) &&
-                        string.Equals(id, radarrMovie.ImdbId, StringComparison.OrdinalIgnoreCase));
-                }
-            }
-            else if (itemType == "episode")
-            {
-                // Find episode by matching season and episode number
-                var bazarrEpisode = await _bazarrService.GetEpisodeBySonarrIdAsync(bazarrId, cancellationToken).ConfigureAwait(false);
-                if (bazarrEpisode != null)
-                {
-                    var episodes = _libraryManager.GetItemList(new InternalItemsQuery
-                    {
-                        IncludeItemTypes = [BaseItemKind.Episode],
-                        IsVirtualItem = false,
-                        Recursive = true
-                    });
-                    item = episodes.Cast<Episode>().FirstOrDefault(e =>
-                        e.ParentIndexNumber == bazarrEpisode.Season &&
-                        e.IndexNumber == bazarrEpisode.Episode);
-                }
-            }
-
+            var item = _libraryManager.GetItemById(itemId);
             if (item != null)
             {
-                _logger.LogInformation("Triggering full metadata refresh for {ItemType} '{Name}' to detect new subtitle", itemType, item.Name);
+                _logger.LogInformation("Triggering full metadata refresh for '{Name}' to detect new subtitle", item.Name);
 
                 // Resolve IProviderManager lazily to avoid circular dependency
                 // (IProviderManager -> ISubtitleManager -> ISubtitleProvider -> IProviderManager)
@@ -323,12 +266,12 @@ public class BazarrSubtitleProvider : ISubtitleProvider
             }
             else
             {
-                _logger.LogWarning("Could not find {ItemType} with Bazarr ID {BazarrId} for refresh", itemType, bazarrId);
+                _logger.LogWarning("Could not find item {ItemId} for refresh", itemId);
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error refreshing {ItemType} after subtitle download", itemType);
+            _logger.LogError(ex, "Error refreshing item {ItemId} after subtitle download", itemId);
             // Don't throw - the download succeeded, refresh is optional
         }
     }
