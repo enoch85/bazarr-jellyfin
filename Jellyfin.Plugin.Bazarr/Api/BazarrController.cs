@@ -157,6 +157,7 @@ public class BazarrController : ControllerBase
             }
 
             request.SonarrEpisodeId = sonarrEpisodeId.Value;
+            request.SonarrSeriesId = await _bazarrService.GetSeriesIdByEpisodeIdAsync(sonarrEpisodeId.Value).ConfigureAwait(false);
             _logger.LogInformation(
                 "Downloading subtitle for {Series} S{Season:D2}E{Episode:D2}",
                 episode.SeriesName,
