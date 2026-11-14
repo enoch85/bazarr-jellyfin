@@ -33,6 +33,7 @@ public class MovieSubtitleHandler
     /// <summary>
     /// Searches for movie subtitles.
     /// </summary>
+    /// <param name="itemId">The Jellyfin item searched for, carried in the subtitle IDs.</param>
     /// <param name="providerIds">The provider IDs (TMDB, IMDB, etc.).</param>
     /// <param name="name">The movie name.</param>
     /// <param name="language">The full language string.</param>
@@ -41,6 +42,7 @@ public class MovieSubtitleHandler
     /// <param name="cancellationToken">The cancellation token.</param>
     /// <returns>A list of remote subtitle info.</returns>
     public async Task<IEnumerable<RemoteSubtitleInfo>> SearchAsync(
+        Guid itemId,
         Dictionary<string, string> providerIds,
         string? name,
         string? language,
@@ -98,7 +100,7 @@ public class MovieSubtitleHandler
         return filteredSubtitles.Select(s => new RemoteSubtitleInfo
         {
             // Encode the subtitle info in the ID - we use | as separator since : may appear in subtitle data
-            Id = $"movie|{radarrId}|{s.Provider}|{s.HearingImpaired ?? "False"}|{s.Forced ?? "False"}|{Uri.EscapeDataString(s.Subtitle)}",
+            Id = $"movie|{radarrId}|{s.Provider}|{s.HearingImpaired ?? "False"}|{s.Forced ?? "False"}|{Uri.EscapeDataString(s.Subtitle)}|{itemId:N}",
             Name = s.Release,
             ProviderName = "Bazarr",
             Format = SubtitleLanguageHelper.GetSubtitleFormat(s.OriginalFormat),

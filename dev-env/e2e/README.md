@@ -33,6 +33,7 @@ and records every request it receives.
 | Alpha - Foxtrot, Juliet Show           | sonarr 1-7  | one step of the episode lookup chain each (see below)     |
 | Golf Show                              | -           | not in Bazarr: no results                                 |
 | Hotel Show S02E05                      | sonarr 8    | episode download and refresh                              |
+| Foxtrot Show S01E01                    | sonarr 6    | download of an episode number other shows share           |
 
 The episode lookup chain is series TVDB (folder name), series IMDB (folder name), episode TVDB
 and IMDB (episode NFO), original title (`tvshow.nfo`), title, then Bazarr's alternative titles.

@@ -62,6 +62,11 @@ throw new InvalidOperationException(
 
 **DO NOT "FIX" THIS** - it's the correct workaround for Bazarr's server-side download architecture.
 
+Because of the exception Jellyfin skips its own post-download refresh, so the plugin refreshes the item
+itself: subtitle IDs carry the ID of the Jellyfin item the search ran for. Don't look the item up from
+Bazarr's data instead - Bazarr has no episode-level IDs, and matching on season/episode numbers refreshed
+another show's episode.
+
 ### Episode Subtitle Lookup Architecture
 
 The episode lookup process uses fallback logic due to an ID mismatch between Jellyfin and Bazarr:
@@ -92,7 +97,7 @@ The episode lookup process uses fallback logic due to an ID mismatch between Jel
 Bazarr's `/api/movies` marshals a model that has **no `tmdbId` field** - see `movies_data_model`
 in `bazarr/api/movies/movies.py`; `flask_restx.marshal` drops anything not declared there.
 Matching a Jellyfin movie to Bazarr therefore only works through `imdbId`, in the search
-handler, the controller and the post-download library refresh.
+handler and the controller.
 
 **DO NOT re-add TMDB matching** - it silently never matches, which is what made the
 post-download refresh a no-op for every movie.

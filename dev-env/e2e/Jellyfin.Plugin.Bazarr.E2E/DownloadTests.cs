@@ -51,6 +51,19 @@ public class DownloadTests : JellyfinUiTest
         Assert.Equal("pickled-download", body.RootElement.GetProperty("subtitle").GetString());
     }
 
+    /// <summary>Other shows have an S01E01 too: only the episode the search ran for may be refreshed.</summary>
+    [Fact]
+    public async Task Episode_SharingItsNumberWithOtherShows_IsTheOneRefreshed()
+    {
+        var itemId = await FindEpisodeAsync("Foxtrot Show");
+        var folder = await FreshFolderAsync(itemId, "shows/Foxtrot Show/Season 01");
+
+        var log = LogMark();
+        await DownloadFromDialogAsync(itemId, "Foxtrot.Show.S01E01.WEB.OK");
+
+        await AssertDownloadedAsync(itemId, folder, "Foxtrot Show S01E01.en.srt", log);
+    }
+
     [Fact]
     public async Task BazarrRefusingTheDownload_ReportsItAndSavesNothing()
     {
