@@ -11,7 +11,6 @@ This plugin integrates Jellyfin with [Bazarr](https://www.bazarr.media/) to prov
 
 - Native Integration - Uses Jellyfin's built-in subtitle search UI
 - Movies & Episodes - Full support for both content types
-- Smart Caching - Results cached for 1 hour to avoid repeated searches
 - Background Search - Long searches continue in background, UI stays responsive
 - One-Click Download - Select and download subtitles instantly
 - Auto-Refresh - Library automatically refreshes after download
@@ -73,7 +72,7 @@ flowchart TB
     E -->|Yes| F[Return subtitle list]
     E -->|No| G[Return placeholder]
     G --> H[Search continues in background]
-    H --> I[Results cached 1 hour]
+    H --> I[Results kept for the next search]
     I --> J[Click Search again]
     J --> F
 ```
