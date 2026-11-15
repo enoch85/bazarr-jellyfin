@@ -11,9 +11,6 @@ namespace Jellyfin.Plugin.Bazarr.E2E;
 /// as a JSON-encoded string with content type application/json
 /// (bazarr/api/providers/providers_movies.py, libs/flask_restx/representations.py).
 ///
-/// Each scenario gets its own movie or episode so the plugin's one-hour result cache cannot
-/// leak between tests.
-///
 /// Like Bazarr 1.5.4+, a download is a queued job: it answers 204 at once, then writes the subtitle
 /// next to the media file and records it in the history. The file location comes from the table
 /// below, never from the request.

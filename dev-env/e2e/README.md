@@ -21,9 +21,8 @@ serialises `return 'All providers are throttled', 500` in
 `bazarr/api/providers/providers_movies.py`. Error paths like provider throttling cannot be
 triggered on demand in a real Bazarr, and that is precisely what these tests cover.
 
-Each scenario has its own movie or episode, because the plugin caches search results for an
-hour. `FakeBazarr` also writes the subtitle beside the media file on a download, as Bazarr does,
-and records every request it receives.
+Each scenario has its own movie or episode. `FakeBazarr` also writes the subtitle beside the media
+file on a download, as Bazarr does, and records every request it receives.
 
 | Item                                   | Bazarr id   | Response / what it covers                                 |
 |----------------------------------------|-------------|-----------------------------------------------------------|

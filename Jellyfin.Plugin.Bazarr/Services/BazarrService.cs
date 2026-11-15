@@ -374,9 +374,9 @@ public class BazarrService : IBazarrService
     }
 
     /// <summary>
-    /// Serves a subtitle search from cache, joins an identical in-flight search, or starts one.
-    /// Callers that hit <paramref name="timeoutSeconds"/> get an in-progress result while the
-    /// search keeps running - joining a search must never block longer than starting one.
+    /// Starts a Bazarr search, joins an identical in-flight one, or hands over the results of one that
+    /// outran its caller's timeout. Callers that hit <paramref name="timeoutSeconds"/> get an in-progress
+    /// result while the search keeps running - joining a search must never block longer than starting one.
     /// </summary>
     private async Task<SubtitleSearchResult> SearchAsync(
         string cacheKey,
@@ -385,9 +385,11 @@ public class BazarrService : IBazarrService
         int timeoutSeconds,
         CancellationToken cancellationToken)
     {
+        // A search that outran its caller's timeout leaves its results for the next search, once
         if (_cache.TryGetValue(cacheKey, out IReadOnlyList<SubtitleOption>? cached) && cached != null)
         {
-            _logger.LogInformation("Returning cached subtitle search results for {Item} ({Count} subtitles)", itemDescription, cached.Count);
+            _cache.Remove(cacheKey);
+            _logger.LogInformation("Returning background search results for {Item} ({Count} subtitles)", itemDescription, cached.Count);
             return new SubtitleSearchResult { Subtitles = cached, FromCache = true };
         }
 
@@ -410,12 +412,16 @@ public class BazarrService : IBazarrService
             }
         }
 
-        return new SubtitleSearchResult { Subtitles = await searchTask.ConfigureAwait(false) };
+        var subtitles = await searchTask.ConfigureAwait(false);
+
+        // Answered in time, so nothing is kept: the next search asks Bazarr again
+        _cache.Remove(cacheKey);
+        return new SubtitleSearchResult { Subtitles = subtitles };
     }
 
     /// <summary>
-    /// Owns a single in-flight search: caches the result and always releases the in-flight slot,
-    /// whether the caller is still waiting or has already timed out.
+    /// Owns a single in-flight search: keeps the result for a caller that timed out and always releases
+    /// the in-flight slot, whether the caller is still waiting or has already timed out.
     /// </summary>
     private async Task<IReadOnlyList<SubtitleOption>> RunSearchAsync(
         Func<Task<IReadOnlyList<SubtitleOption>>> search,
@@ -426,11 +432,7 @@ public class BazarrService : IBazarrService
         {
             var result = await search().ConfigureAwait(false);
             _cache.Set(cacheKey, result, SearchResultCacheDuration);
-            _logger.LogInformation(
-                "Search completed for {Item}. Found {Count} subtitles, cached for {Duration} minutes.",
-                itemDescription,
-                result.Count,
-                SearchResultCacheDuration.TotalMinutes);
+            _logger.LogInformation("Search completed for {Item}. Found {Count} subtitles.", itemDescription, result.Count);
 
             return result;
         }

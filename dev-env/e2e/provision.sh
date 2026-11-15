@@ -86,8 +86,7 @@ fi
 
 # --- 2. Media ---------------------------------------------------------------------
 # The IMDB ID in the folder name is what Bazarr matches on - Bazarr's /api/movies
-# response exposes imdbId and nothing else. One movie per scenario, so the plugin's
-# one-hour result cache cannot leak between tests.
+# response exposes imdbId and nothing else. One movie per scenario.
 make_movie() {
     local dir="$JF_ROOT/media/movies/$1" file="$2"
     [ -f "$dir/$file" ] && return 0

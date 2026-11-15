@@ -146,4 +146,41 @@ public class BazarrServiceCachingTests : IDisposable
         Assert.All(results, r => Assert.True(r.SearchInProgress));
         Assert.Single(_mockHandler.CapturedRequests);
     }
+
+    /// <summary>
+    /// Every search asks Bazarr, so an earlier answer - even an empty one - never hides newer results.
+    /// </summary>
+    [Fact]
+    public async Task SearchMovieSubtitlesAsync_EverySearchAsksBazarr()
+    {
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [] }""");
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [{ "provider": "p", "subtitle": "s", "language": "en" }] }""");
+
+        await _service.SearchMovieSubtitlesAsync(1, "en", 25);
+        var second = await _service.SearchMovieSubtitlesAsync(1, "en", 25);
+
+        Assert.Equal(2, _mockHandler.CapturedRequests.Count);
+        Assert.Single(second.Subtitles);
+    }
+
+    /// <summary>
+    /// A search that outran the timeout hands its results to the next search, once.
+    /// </summary>
+    [Fact]
+    public async Task SearchMovieSubtitlesAsync_SearchThatOutranTheTimeout_HandsItsResultsToTheNextSearch()
+    {
+        _mockHandler.ResponseDelay = TimeSpan.FromSeconds(2);
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [{ "provider": "p", "subtitle": "s", "language": "en" }] }""");
+        _mockHandler.QueueResponse(HttpStatusCode.OK, """{ "data": [] }""");
+
+        var first = await _service.SearchMovieSubtitlesAsync(1, "en", 1);
+        await Task.Delay(TimeSpan.FromSeconds(2));
+        var second = await _service.SearchMovieSubtitlesAsync(1, "en", 1);
+        var third = await _service.SearchMovieSubtitlesAsync(1, "en", 0);
+
+        Assert.True(first.SearchInProgress);
+        Assert.Single(second.Subtitles);
+        Assert.Empty(third.Subtitles);
+        Assert.Equal(2, _mockHandler.CapturedRequests.Count);
+    }
 }
