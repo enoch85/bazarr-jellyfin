@@ -20,8 +20,8 @@ public static class SubtitlePlaceholder
     /// <returns>A single-item result set.</returns>
     public static IEnumerable<RemoteSubtitleInfo> SearchInProgress() => Create(
         "in_progress",
-        "Search in progress - results typically ready in 5-15 minutes",
-        "Bazarr is searching multiple providers in the background. Click 'Search' again later to see cached results.");
+        "Search in progress",
+        "Bazarr is still searching its providers. Search again in a moment to see the results.");
 
     /// <summary>
     /// Row shown when a Bazarr search could not be completed.

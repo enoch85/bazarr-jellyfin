@@ -77,8 +77,7 @@ public class BazarrSubtitleProvider : ISubtitleProvider
     public async Task<IEnumerable<RemoteSubtitleInfo>> Search(SubtitleSearchRequest request, CancellationToken cancellationToken)
     {
         // Skip automated requests (media scans, scheduled tasks, etc.)
-        // Bazarr searches are slow by design - they query multiple subtitle providers in real-time
-        // which can take 1-2 minutes per search. This would block media scans indefinitely.
+        // Bazarr searches query its subtitle providers in real-time, which would hold up media scans.
         // This plugin is designed for manual user-initiated searches only.
         if (request.IsAutomated)
         {

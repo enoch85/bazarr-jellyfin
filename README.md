@@ -213,7 +213,7 @@ Don't worry - this is safe:
 
 ### Subtitle search shows "Search in progress"
 
-This is normal - Bazarr is querying multiple providers which takes time. Wait 5-15 minutes and click Search again to see cached results.
+This is normal when Bazarr takes longer than the search timeout. The search continues in the background; search again in a moment to see the results.
 
 ### Subtitle search shows "Search failed"
 

@@ -38,7 +38,7 @@ git tag -a v1.1.5 -m "Description of changes" && git push origin v1.1.5
 ## API Notes
 
 - Bazarr API uses array notation for some parameters (e.g., `seriesid[]` not `seriesid`)
-- Subtitle provider searches can take 1-2 minutes as Bazarr queries multiple providers in real-time
+- A manual search queries Bazarr's providers in parallel and takes as long as the slowest one (4-10 s with four no-account providers in a test)
 
 ## Design Decisions
 
