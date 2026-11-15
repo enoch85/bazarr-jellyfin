@@ -41,7 +41,7 @@
                         <label class="inputLabel inputLabelUnfocused" for="SearchTimeoutSeconds">Search Timeout (seconds)</label>
                         <input id="SearchTimeoutSeconds" name="SearchTimeoutSeconds" type="number" is="emby-input" min="0" max="300" />
                         <div class="fieldDescription">
-                            UI response timeout - search continues in background (Bazarr searches take 5-15 min). Results are cached for 1 hour. Set to 0 to wait indefinitely. <strong>Recommended: 25s</strong>
+                            How long the dialog waits for Bazarr's search. A longer search continues in the background; search again to see its results, which are kept for 1 hour. Set to 0 to always wait. <strong>Recommended: 25s</strong>
                         </div>
                     </div>
                     
